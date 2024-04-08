@@ -5,7 +5,7 @@
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
 #include <string.h> // ffs
-#include "generic/irq.h" // irq_save
+#include "board/irq.h" // irq_save
 #include "command.h" // shutdown
 #include "board/gpio.h" // gpio_out_setup
 #include "sched.h" // sched_shutdown

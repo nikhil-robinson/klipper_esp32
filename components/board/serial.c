@@ -6,83 +6,94 @@
 
 #include <stdint.h> // uint32_t
 
-#include "generic/irq.h" // irq_save
+#include "autoconf.h"
+#include "generic/irq.h"        // irq_save
 #include "generic/serial_irq.h" // serial_rx_data
-#include "sched.h" // DECL_INIT
+#include "sched.h"              // DECL_INIT
 
-#define UARTx uart0_hw
+#include <stdio.h>
+#include "driver/uart.h" // For uart_get_sclk_freq()
+#include "hal/uart_hal.h"
+#include "soc/uart_periph.h"
+#include "esp_rom_gpio.h"
+
+#define UART_CONSOLE 0
+#define UART_HAL() { .dev = UART_LL_GET_HW(UART_CONSOLE) }
 #define UARTx_IRQn UART0_IRQ_IRQn
+// RXFIFO Full interrupt threshold. Set the same as the ESP-IDF UART driver
+#define RXFIFO_FULL_THR (SOC_UART_FIFO_LEN - 8)
+
+// RXFIFO RX timeout threshold. This is in bit periods, so 10==one byte. Same as ESP-IDF UART driver.
+#define RXFIFO_RX_TIMEOUT (10)
 #define GPIO_Rx 1
 #define GPIO_Tx 0
 
 // Write tx bytes to the serial port
-static void
-kick_tx(void)
-{
-    // for (;;) {
-    //     if (UARTx->fr & UART_UARTFR_TXFF_BITS) {
-    //         // Output fifo full - enable tx irq
-    //         UARTx->imsc = (UART_UARTIMSC_RXIM_BITS | UART_UARTIMSC_RTIM_BITS
-    //                        | UART_UARTIMSC_TXIM_BITS);
-    //         break;
-    //     }
-    //     uint8_t data;
-    //     int ret = serial_get_tx_byte(&data);
-    //     if (ret) {
-    //         // No more data to send - disable tx irq
-    //         UARTx->imsc = UART_UARTIMSC_RXIM_BITS | UART_UARTIMSC_RTIM_BITS;
-    //         break;
-    //     }
-    //     UARTx->dr = data;
-    // }
+static void kick_tx(void) {
+  uart_hal_context_t repl_hal = UART_HAL();
+  uart_dev_t * hw =UART_LL_GET_HW(UART_CONSOLE);
+  for (;;) {
+    uint8_t *data;
+    int ret = serial_get_tx_byte(&data);
+    if (ret) {
+      // No more data to send - disable tx irq
+      break;
+    }
+    hw->fifo.val = (int)data;
+  }
+
 }
 
-void
-UARTx_IRQHandler(void)
-{
-    // uint32_t mis = UARTx->mis;
-    // if (mis & (UART_UARTMIS_RXMIS_BITS | UART_UARTMIS_RTMIS_BITS)) {
-    //     do {
-    //         serial_rx_byte(UARTx->dr);
-    //     } while (!(UARTx->fr & UART_UARTFR_RXFE_BITS));
-    // } else if (mis & UART_UARTMIS_TXMIS_BITS) {
-    //     kick_tx();
-    // }
+static void  UARTx_IRQHandler(void *arg) {
+
+    uint8_t rbuf[SOC_UART_FIFO_LEN];
+    int len;
+    uart_hal_context_t repl_hal = UART_HAL();
+
+    uart_hal_clr_intsts_mask(&repl_hal, UART_INTR_RXFIFO_FULL | UART_INTR_RXFIFO_TOUT | UART_INTR_FRAM_ERR);
+
+    len = uart_hal_get_rxfifo_len(&repl_hal);
+
+    uart_hal_read_rxfifo(&repl_hal, rbuf, &len);
+
+    for (int i = 0; i < len; i++) {
+        serial_rx_byte(rbuf[i]);
+    }
+
+    kick_tx();
 }
 
-void
-serial_enable_tx_irq(void)
-{
-    // if (!(UARTx->fr & UART_UARTFR_TXFF_BITS)) {
-    //     irqstatus_t flag = irq_save();
-    //     kick_tx();
-    //     irq_restore(flag);
-    // }
+void serial_enable_tx_irq(void) {
+
+    // irqstatus_t flag = irq_save();
+    kick_tx();
+    // irq_restore(flag);
 }
 
-void
-serial_init(void)
-{
-    // enable_pclock(RESETS_RESET_UART0_BITS);
+void serial_init(void) {
 
-    // // Setup baud
-    // uint32_t pclk = get_pclock_frequency(RESETS_RESET_UART0_BITS);
-    // uint32_t div = DIV_ROUND_CLOSEST(pclk * 4, CONFIG_SERIAL_BAUD);
-    // UARTx->ibrd = div >> 6;
-    // UARTx->fbrd = div & 0x3f;
+  uart_hal_context_t uart_hal = UART_HAL();
+  soc_module_clk_t sclk;
 
-    // // Enable fifo, set 8N1
-    // UARTx->lcr_h = UART_UARTLCR_H_FEN_BITS | UART_UARTLCR_H_WLEN_BITS;
-    // UARTx->ifls = 0;
-    // UARTx->cr = (UART_UARTCR_RXE_BITS | UART_UARTCR_TXE_BITS
-    //              | UART_UARTCR_UARTEN_BITS);
+  uint32_t sclk_freq;
+  uart_hal_get_sclk(&uart_hal,
+                    &sclk); // To restore SCLK after uart_hal_init() resets it
+  ESP_ERROR_CHECK(uart_get_sclk_freq(sclk, &sclk_freq));
+  uart_hal_init(&uart_hal, UART_CONSOLE); // Sets defaults: 8n1, no flow control
 
-    // // Setup pins
-    // gpio_peripheral(GPIO_Rx, 2, 1);
-    // gpio_peripheral(GPIO_Tx, 2, 0);
+  esp_rom_gpio_connect_out_signal(GPIO_Tx, UART_PERIPH_SIGNAL(UART_CONSOLE, SOC_UART_TX_PIN_IDX), 0, 0);
+  esp_rom_gpio_connect_out_signal(GPIO_Rx, UART_PERIPH_SIGNAL(UART_CONSOLE, SOC_UART_RX_PIN_IDX), 0, 0);
+  uart_hal_set_sclk(&uart_hal, sclk);
+  uart_hal_set_baudrate(&uart_hal, CONFIG_SERIAL_BAUD, sclk_freq);
+  uart_hal_rxfifo_rst(&uart_hal);
+  uart_hal_txfifo_rst(&uart_hal);
 
-    // // Enable receive irq
-    // armcm_enable_irq(UARTx_IRQHandler, UARTx_IRQn, 0);
-    // UARTx->imsc = UART_UARTIMSC_RXIM_BITS | UART_UARTIMSC_RTIM_BITS;
+  ESP_ERROR_CHECK(esp_intr_alloc(uart_periph_signal[UART_CONSOLE].irq,
+                                 ESP_INTR_FLAG_LOWMED,
+                                 UARTx_IRQHandler, NULL, NULL));
+  uart_hal_set_rxfifo_full_thr(&uart_hal, RXFIFO_FULL_THR);
+  uart_hal_set_rx_timeout(&uart_hal, RXFIFO_RX_TIMEOUT);
+  uart_hal_ena_intr_mask(&uart_hal,
+                         UART_INTR_RXFIFO_FULL | UART_INTR_RXFIFO_TOUT);
 }
 DECL_INIT(serial_init);

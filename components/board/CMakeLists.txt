@@ -11,4 +11,4 @@ idf_component_register(SRCS "adc.c"
                             "compile_time_request.c"
                             "internal.c"
                     INCLUDE_DIRS "include"
-                    REQUIRES klipper)
+                    REQUIRES klipper driver)
