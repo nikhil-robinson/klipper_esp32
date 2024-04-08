@@ -1,0 +1,3 @@
+[submodule "components/klipper/klipper"]
+	path = components/klipper/klipper
+	url = https://github.com/Klipper3d/klipper.git

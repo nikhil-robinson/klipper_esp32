@@ -1,0 +1,12 @@
+idf_component_register(SRCS "adc.c" 
+                            "alloc.c" 
+                            "crc16_ccitt.c" 
+                            "gpio.c" 
+                            "hard_pwm.c" 
+                            "serial_irq.c" 
+                            "serial.c" 
+                            "timer_irq.c" 
+                            "timer.c" 
+                            "watchdog.c"
+                    INCLUDE_DIRS "include"
+                    REQUIRES klipper)
