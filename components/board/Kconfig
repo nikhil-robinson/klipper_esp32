@@ -1,0 +1,114 @@
+# Main Kconfig settings
+
+menu "Klipper Firmware Configuration"
+
+    config LOW_LEVEL_OPTIONS
+        bool "Enable extra low-level configuration options"
+        help
+            Enable low-level configuration options that (if modified) may
+            result in a build that does not function correctly.
+
+    choice
+        prompt "Micro-controller Architecture"
+        config MACH_AVR
+            bool "Atmega AVR"
+        config MACH_ATSAM
+            bool "SAM3/SAM4/SAM E70 (Due and Duet)"
+        config MACH_ATSAMD
+            bool "SAMC21/SAMD21/SAMD51/SAME5x"
+        config MACH_LPC176X
+            bool "LPC176x (Smoothieboard)"
+        config MACH_STM32
+            bool "STMicroelectronics STM32"
+        config MACH_HC32F460
+            bool "Huada Semiconductor HC32F460"
+        config MACH_RP2040
+            bool "Raspberry Pi RP2040"
+        config MACH_PRU
+            bool "Beaglebone PRU"
+        config MACH_AR100
+            bool "Allwinner A64 AR100"
+        config MACH_LINUX
+            bool "Linux process"
+        config MACH_SIMU
+            bool "Host simulator"
+        config ESP32
+            bool "Espressifs esp32"
+    endchoice
+
+    # Generic configuration options for serial ports
+    config SERIAL
+        bool "Enable serial"
+    config SERIAL_BAUD
+        depends on SERIAL
+        int "Baud rate for serial port" if LOW_LEVEL_OPTIONS
+        default 250000
+        help
+            Specify the baud rate of the serial port. This should be set
+            to 250000. Read the FAQ before changing this value.
+
+    # Generic configuration options for USB
+    config USBSERIAL
+        bool "Enable usbserial"
+    config USBCANBUS
+        bool "Enable usbcanbus"
+    config USB
+        bool "Enable usb"
+        default y if USBSERIAL || USBCANBUS
+    config USB_VENDOR_ID
+        string "USB VID"
+        default 0x1d50
+    config USB_DEVICE_ID
+        string "USB PID"
+        default 0x614e
+    config USB_SERIAL_NUMBER_CHIPID
+        depends on USB && HAVE_CHIPID
+        bool "Chip ID"
+        default y
+    config USB_SERIAL_NUMBER
+        string "serial number"
+        default "12345"
+
+    menu "USB ids"
+        depends on USB && LOW_LEVEL_OPTIONS
+        config USB_VENDOR_ID
+            hex "USB vendor ID" if USBSERIAL
+        config USB_DEVICE_ID
+            hex "USB device ID" if USBSERIAL
+        config USB_SERIAL_NUMBER_CHIPID
+            bool "USB serial number from CHIPID" if HAVE_CHIPID
+        config USB_SERIAL_NUMBER
+            string "USB serial number" if !USB_SERIAL_NUMBER_CHIPID
+    endmenu
+
+    # Optional features that can be disabled (for devices with small flash sizes)
+    config WANT_GPIO_BITBANGING
+        bool "WANT_GPIO_BITBANGING"
+        depends on HAVE_GPIO
+        default y
+    config WANT_DISPLAYS
+        bool "WANT_DISPLAYS"
+        depends on HAVE_GPIO
+        default y
+    config WANT_SENSORS
+        bool "WANT_SENSORS"
+        depends on HAVE_GPIO_I2C || HAVE_GPIO_SPI
+        default y
+    config WANT_LIS2DW
+        bool "WANT_LIS2DW"
+        depends on HAVE_GPIO_SPI
+        default y
+    config WANT_SOFTWARE_I2C
+        bool "WANT_SOFTWARE_I2C"
+        depends on HAVE_GPIO && HAVE_GPIO_I2C
+        default y
+    config WANT_SOFTWARE_SPI
+        bool "WANT_SOFTWARE_SPI"
+        depends on HAVE_GPIO && HAVE_GPIO_SPI
+        default y
+    config NEED_SENSOR_BULK
+        bool "NEED_SENSOR_BULK"
+        depends on WANT_SENSORS || WANT_LIS2DW
+        default y
+
+endmenu

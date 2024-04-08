@@ -8,5 +8,6 @@ idf_component_register(SRCS "adc.c"
                             "timer_irq.c" 
                             "timer.c" 
                             "watchdog.c"
+                            "compile_time_request.c"
                     INCLUDE_DIRS "include"
                     REQUIRES klipper)
