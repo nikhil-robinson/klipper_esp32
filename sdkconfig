@@ -1872,31 +1872,6 @@ CONFIG_WIFI_PROV_AUTOSTOP_TIMEOUT=30
 CONFIG_WIFI_PROV_STA_ALL_CHANNEL_SCAN=y
 # CONFIG_WIFI_PROV_STA_FAST_SCAN is not set
 # end of Wi-Fi Provisioning Manager
-
-#
-# Klipper Firmware Configuration
-#
-# CONFIG_LOW_LEVEL_OPTIONS is not set
-# CONFIG_MACH_AVR is not set
-# CONFIG_MACH_ATSAM is not set
-# CONFIG_MACH_ATSAMD is not set
-# CONFIG_MACH_LPC176X is not set
-# CONFIG_MACH_STM32 is not set
-# CONFIG_MACH_HC32F460 is not set
-# CONFIG_MACH_RP2040 is not set
-# CONFIG_MACH_PRU is not set
-# CONFIG_MACH_AR100 is not set
-# CONFIG_MACH_LINUX is not set
-# CONFIG_MACH_SIMU is not set
-CONFIG_ESP32=y
-# CONFIG_SERIAL is not set
-# CONFIG_USBSERIAL is not set
-# CONFIG_USBCANBUS is not set
-# CONFIG_USB is not set
-CONFIG_USB_VENDOR_ID=0x1d50
-CONFIG_USB_DEVICE_ID=0x614e
-CONFIG_USB_SERIAL_NUMBER="12345"
-# end of Klipper Firmware Configuration
 # end of Component config
 
 # CONFIG_IDF_EXPERIMENTAL_FEATURES is not set
