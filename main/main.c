@@ -5,5 +5,4 @@
 void app_main(void)
 {
     sched_main();
-
 }
