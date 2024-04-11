@@ -1,14 +1,14 @@
 
-#include <stdint.h> // uint32_t
 #include "autoconf.h"
-#include "generic/irq.h"        // irq_save
-#include "generic/serial_irq.h" // serial_rx_data
-#include "sched.h"              // DECL_INIT
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
+#include "generic/irq.h"        // irq_save
+#include "generic/serial_irq.h" // serial_rx_data
+#include "sched.h"              // DECL_INIT
+#include <stdint.h>             // uint32_t
 #include <stdio.h>
 #include <string.h>
 
@@ -23,39 +23,31 @@ static const char *TAG = "uart_events";
 #define RD_BUF_SIZE (BUF_SIZE)
 static QueueHandle_t uart0_queue;
 
-
-
-
-
-void kick_tx()
-{
-  size_t buffered_size =0;
+void kick_tx() {
+  size_t buffered_size = 0;
   uint8_t data;
   uint8_t tx_buffer[96];
-  while (!serial_get_tx_byte(&data))
-  {
+  while (!serial_get_tx_byte(&data)) {
     tx_buffer[buffered_size] = data;
     buffered_size++;
   }
-  if (buffered_size)
-  {
-    uart_write_bytes(EX_UART_NUM, (const char*) tx_buffer, buffered_size);
+  if (buffered_size) {
+    uart_write_bytes(EX_UART_NUM, (const char *)tx_buffer, buffered_size);
   }
 }
 
-
 static void uart_event_task(void *pvParameters) {
   uart_event_t event;
-  
+
   uint8_t *dtmp = (uint8_t *)malloc(RD_BUF_SIZE);
-  
+
   for (;;) {
     if (xQueueReceive(uart0_queue, (void *)&event, (TickType_t)portMAX_DELAY)) {
       bzero(dtmp, RD_BUF_SIZE);
       ESP_LOGI(TAG, "uart[%d] event:", EX_UART_NUM);
       switch (event.type) {
       case UART_DATA:
-      
+
         ESP_LOGI(TAG, "[UART DATA]: %d", event.size);
         uart_read_bytes(EX_UART_NUM, dtmp, event.size, portMAX_DELAY);
         for (size_t i = 0; i < event.size; i++) {
@@ -109,6 +101,4 @@ void serial_init(void) {
 
 DECL_INIT(serial_init);
 
-void serial_enable_tx_irq(void) {
-  kick_tx();
-}
+void serial_enable_tx_irq(void) { kick_tx(); }

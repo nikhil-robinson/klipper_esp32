@@ -7,10 +7,10 @@
 #define USB_CDC_ACM_PROTO_AT_V25TER 1
 
 struct usb_cdc_header_descriptor {
-    uint8_t bLength;
-    uint8_t bDescriptorType;
-    uint8_t bDescriptorSubType;
-    uint16_t bcdCDC;
+  uint8_t bLength;
+  uint8_t bDescriptorType;
+  uint8_t bDescriptorSubType;
+  uint16_t bcdCDC;
 } PACKED;
 
 #define USB_CDC_HEADER_TYPE 0x00
@@ -21,18 +21,18 @@ struct usb_cdc_header_descriptor {
 #define USB_CDC_CS_ENDPOINT 0x25
 
 struct usb_cdc_acm_descriptor {
-    uint8_t bLength;
-    uint8_t bDescriptorType;
-    uint8_t bDescriptorSubType;
-    uint8_t bmCapabilities;
+  uint8_t bLength;
+  uint8_t bDescriptorType;
+  uint8_t bDescriptorSubType;
+  uint8_t bmCapabilities;
 } PACKED;
 
 struct usb_cdc_union_descriptor {
-    uint8_t bLength;
-    uint8_t bDescriptorType;
-    uint8_t bDescriptorSubType;
-    uint8_t bMasterInterface0;
-    uint8_t bSlaveInterface0;
+  uint8_t bLength;
+  uint8_t bDescriptorType;
+  uint8_t bDescriptorSubType;
+  uint8_t bMasterInterface0;
+  uint8_t bSlaveInterface0;
 } PACKED;
 
 #define USB_CDC_REQ_SET_LINE_CODING 0x20
@@ -40,10 +40,10 @@ struct usb_cdc_union_descriptor {
 #define USB_CDC_REQ_SET_CONTROL_LINE_STATE 0x22
 
 struct usb_cdc_line_coding {
-    uint32_t dwDTERate;
-    uint8_t bCharFormat;
-    uint8_t bParityType;
-    uint8_t bDataBits;
+  uint32_t dwDTERate;
+  uint8_t bCharFormat;
+  uint8_t bParityType;
+  uint8_t bDataBits;
 } PACKED;
 
 #endif // usbstd_cdc.h

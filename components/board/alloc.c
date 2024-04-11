@@ -9,15 +9,7 @@
 static char dynmem_pool[20 * 1024];
 
 // Return the start of memory available for dynamic allocations
-void *
-dynmem_start(void)
-{
-    return dynmem_pool;
-}
+void *dynmem_start(void) { return dynmem_pool; }
 
 // Return the end of memory available for dynamic allocations
-void *
-dynmem_end(void)
-{
-    return &dynmem_pool[sizeof(dynmem_pool)];
-}
+void *dynmem_end(void) { return &dynmem_pool[sizeof(dynmem_pool)]; }

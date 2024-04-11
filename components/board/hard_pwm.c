@@ -5,9 +5,9 @@
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
 #include "board/gpio.h" // gpio_pwm_write
-#include "command.h"    // DECL_CONSTANT
-#include "sched.h"      // sched_shutdown
 #include "board/gpio.h"
+#include "command.h" // DECL_CONSTANT
+#include "sched.h"   // sched_shutdown
 
 #define MAX_PWM 255
 DECL_CONSTANT("PWM_MAX", 100);
@@ -30,9 +30,7 @@ struct gpio_pwm gpio_pwm_setup(uint8_t pin, uint32_t cycle_time, uint8_t val) {
   };
   ESP_ERROR_CHECK(mcpwm_new_operator(&operator_config, &oper));
 
-
   ESP_ERROR_CHECK(mcpwm_operator_connect_timer(oper, timer));
-
 
   mcpwm_cmpr_handle_t comparator = NULL;
   mcpwm_comparator_config_t comparator_config = {
@@ -50,7 +48,6 @@ struct gpio_pwm gpio_pwm_setup(uint8_t pin, uint32_t cycle_time, uint8_t val) {
   // position
   ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comparator, val));
 
-
   // go high on counter empty
   ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(
       generator, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP,
@@ -61,7 +58,6 @@ struct gpio_pwm gpio_pwm_setup(uint8_t pin, uint32_t cycle_time, uint8_t val) {
       generator,
       MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comparator,
                                      MCPWM_GEN_ACTION_LOW)));
-
 
   ESP_ERROR_CHECK(mcpwm_timer_enable(timer));
   ESP_ERROR_CHECK(mcpwm_timer_start_stop(timer, MCPWM_TIMER_START_NO_STOP));
