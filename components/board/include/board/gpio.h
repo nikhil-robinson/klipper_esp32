@@ -2,9 +2,15 @@
 #define __RP2040_GPIO_H
 
 #include <stdint.h> // uint32_t
+#include "driver/gpio.h"
+#include "driver/mcpwm_prelude.h"
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
 
 struct gpio_out {
-    uint32_t bit;
+    gpio_num_t pin;
+    uint8_t val;
 };
 struct gpio_out gpio_out_setup(uint8_t pin, uint8_t val);
 void gpio_out_reset(struct gpio_out g, uint8_t val);
@@ -13,22 +19,22 @@ void gpio_out_toggle(struct gpio_out g);
 void gpio_out_write(struct gpio_out g, uint8_t val);
 
 struct gpio_in {
-    uint32_t bit;
+    gpio_num_t pin;
 };
 struct gpio_in gpio_in_setup(uint8_t pin, int8_t pull_up);
 void gpio_in_reset(struct gpio_in g, int8_t pull_up);
 uint8_t gpio_in_read(struct gpio_in g);
 
 struct gpio_pwm {
-    void *reg;
-    uint8_t shift;
-    uint32_t mask;
+    mcpwm_cmpr_handle_t comparator;
 };
 struct gpio_pwm gpio_pwm_setup(uint8_t pin, uint32_t cycle_time, uint8_t val);
 void gpio_pwm_write(struct gpio_pwm g, uint32_t val);
 
 struct gpio_adc {
-    uint8_t chan;
+    adc_oneshot_unit_handle_t handle;
+    adc_channel_t chan;
+
 };
 struct gpio_adc gpio_adc_setup(uint32_t pin);
 uint32_t gpio_adc_sample(struct gpio_adc g);

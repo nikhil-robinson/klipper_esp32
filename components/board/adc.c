@@ -11,31 +11,74 @@
 
 DECL_CONSTANT("ADC_MAX", 4095);
 
+typedef struct {
+    adc_unit_t unit;
+    adc_channel_t channel;
+} adc_mapping_t;
+
+const adc_mapping_t adc_lookup[] = {
+#if CONFIG_IDF_TARGET_ESP32C3
+    { ADC_UNIT_1, ADC_CHANNEL_0 }, // GPIO_NUM_0
+    { ADC_UNIT_1, ADC_CHANNEL_1 }, // GPIO_NUM_1
+    { ADC_UNIT_1, ADC_CHANNEL_2 }, // GPIO_NUM_2
+    { ADC_UNIT_1, ADC_CHANNEL_3 }, // GPIO_NUM_3
+    { ADC_UNIT_1, ADC_CHANNEL_4 }, // GPIO_NUM_4
+    { ADC_UNIT_2, ADC_CHANNEL_0 }, // GPIO_NUM_5
+#elif CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
+    {ADC_UNIT_1, ADC_CHANNEL_0}, //GPIO_NUM_1},
+    {ADC_UNIT_1, ADC_CHANNEL_1}, //GPIO_NUM_2},
+    {ADC_UNIT_1, ADC_CHANNEL_2}, //GPIO_NUM_3},
+    {ADC_UNIT_1, ADC_CHANNEL_3}, //GPIO_NUM_4},
+    {ADC_UNIT_1, ADC_CHANNEL_4}, //GPIO_NUM_5},
+    {ADC_UNIT_1, ADC_CHANNEL_5}, //GPIO_NUM_6},
+    {ADC_UNIT_1, ADC_CHANNEL_6}, //GPIO_NUM_7},
+    {ADC_UNIT_1, ADC_CHANNEL_7}, //GPIO_NUM_8},
+    {ADC_UNIT_1, ADC_CHANNEL_8}, //GPIO_NUM_9},
+    {ADC_UNIT_1, ADC_CHANNEL_9}, //GPIO_NUM_10},
+    {ADC_UNIT_2, ADC_CHANNEL_0}, //GPIO_NUM_11},
+    {ADC_UNIT_2, ADC_CHANNEL_1}, //GPIO_NUM_12},
+    {ADC_UNIT_2, ADC_CHANNEL_2}, //GPIO_NUM_13},
+    {ADC_UNIT_2, ADC_CHANNEL_3}, //GPIO_NUM_14},
+    {ADC_UNIT_2, ADC_CHANNEL_4}, //GPIO_NUM_15},
+    {ADC_UNIT_2, ADC_CHANNEL_5}, //GPIO_NUM_16},
+    {ADC_UNIT_2, ADC_CHANNEL_6}, //GPIO_NUM_17},
+    {ADC_UNIT_2, ADC_CHANNEL_7}, //GPIO_NUM_18},
+    {ADC_UNIT_2, ADC_CHANNEL_8}, //GPIO_NUM_19},
+    {ADC_UNIT_2, ADC_CHANNEL_9}, //PIO_NUM_20},
+
+#elif CONFIG_IDF_TARGET_ESP32H2
+    { ADC_UNIT_1, ADC_CHANNEL_0 }, // GPIO_NUM_0
+    { ADC_UNIT_1, ADC_CHANNEL_1 }, // GPIO_NUM_1
+    { ADC_UNIT_1, ADC_CHANNEL_2 }, // GPIO_NUM_2
+    { ADC_UNIT_1, ADC_CHANNEL_3 }, // GPIO_NUM_3
+    { ADC_UNIT_1, ADC_CHANNEL_4 }, // GPIO_NUM_4
+    { ADC_UNIT_2, ADC_CHANNEL_0 }, // GPIO_NUM_5
+
+#endif
+};
+
 // #define ADC_TEMPERATURE_PIN 0xfe
 // DECL_ENUMERATION("pin", "ADC_TEMPERATURE", ADC_TEMPERATURE_PIN);
 
 struct gpio_adc
 gpio_adc_setup(uint32_t pin)
 {
-    // if ((pin < 0 || pin > 14) && (pin != ))
-    //     shutdown("Not a valid ADC pin");
+    const adc_mapping_t adc = adc_lookup[pin];
+    adc_oneshot_unit_handle_t adc_handle;
+    adc_oneshot_unit_init_cfg_t init_config1 = {
+        .unit_id = adc.unit,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc_handle));
 
-    // // Enable the ADC
-    // if (!is_enabled_pclock(RESETS_RESET_ADC_BITS)) {
-    //     enable_pclock(RESETS_RESET_ADC_BITS);
-    //     adc_hw->cs = ADC_CS_EN_BITS;
-    // }
+    //-------------ADC1 Config---------------//
+    adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+        .atten = ADC_ATTEN_DB_12,
+    };
 
-    // uint8_t chan;
-    // if (pin == ADC_TEMPERATURE_PIN) {
-    //     chan = 4;
-    //     adc_hw->cs |= ADC_CS_TS_EN_BITS;
-    // } else {
-    //     chan = pin - 26;
-    //     padsbank0_hw->io[pin] = PADS_BANK0_GPIO0_OD_BITS;
-    // }
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, adc.channel, &config));
 
-    return (struct gpio_adc){ .chan = 0 };
+    return (struct gpio_adc){ .handle = adc_handle };
 }
 
 enum { ADC_DUMMY=0xff };
@@ -47,23 +90,6 @@ static uint8_t last_analog_read = ADC_DUMMY;
 uint32_t
 gpio_adc_sample(struct gpio_adc g)
 {
-//     uint32_t cs = adc_hw->cs;
-//     if (!(cs & ADC_CS_READY_BITS))
-//         // ADC is busy
-//         goto need_delay;
-//     if (last_analog_read == g.chan)
-//         // Sample now ready
-//         return 0;
-//     if (last_analog_read != ADC_DUMMY)
-//         // Sample on another channel in progress
-//         goto need_delay;
-
-//     // Begin sample
-//     last_analog_read = g.chan;
-//     adc_hw->cs = ((cs & ADC_CS_TS_EN_BITS) | ADC_CS_START_ONCE_BITS
-//                   | ADC_CS_EN_BITS | (g.chan << ADC_CS_AINSEL_LSB));
-
-// need_delay:
     return timer_from_us(5); // Sample takes 2us but provide extra time
 }
 
@@ -71,8 +97,10 @@ gpio_adc_sample(struct gpio_adc g)
 uint16_t
 gpio_adc_read(struct gpio_adc g)
 {
+    int adc_raw =0;
+    ESP_ERROR_CHECK(adc_oneshot_read(g.handle, g.chan, &adc_raw));
     last_analog_read = ADC_DUMMY;
-    return 0;//adc_hw->result;
+    return (uint16_t)adc_raw;
 }
 
 // Cancel a sample that may have been started with gpio_adc_sample()
@@ -82,3 +110,6 @@ gpio_adc_cancel_sample(struct gpio_adc g)
     if (last_analog_read == g.chan)
         last_analog_read = ADC_DUMMY;
 }
+
+
+

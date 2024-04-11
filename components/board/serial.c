@@ -80,7 +80,7 @@ void serial_init(void) {
   /* Configure parameters of an UART driver,
    * communication pins and install the driver */
   uart_config_t uart_config = {
-      .baud_rate = 115200,
+      .baud_rate = CONFIG_SERIAL_BAUD,
       .data_bits = UART_DATA_8_BITS,
       .parity = UART_PARITY_DISABLE,
       .stop_bits = UART_STOP_BITS_1,
