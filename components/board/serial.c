@@ -1,99 +1,114 @@
-// rp2040 serial
-//
-// Copyright (C) 2021  Kevin O'Connor <kevin@koconnor.net>
-//
-// This file may be distributed under the terms of the GNU GPLv3 license.
 
 #include <stdint.h> // uint32_t
-
 #include "autoconf.h"
 #include "generic/irq.h"        // irq_save
 #include "generic/serial_irq.h" // serial_rx_data
 #include "sched.h"              // DECL_INIT
-
+#include "driver/uart.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
 #include <stdio.h>
-#include "driver/uart.h" // For uart_get_sclk_freq()
-#include "hal/uart_hal.h"
-#include "soc/uart_periph.h"
-#include "esp_rom_gpio.h"
+#include <string.h>
 
-#define UART_CONSOLE 0
-#define UART_HAL() { .dev = UART_LL_GET_HW(UART_CONSOLE) }
-#define UARTx_IRQn UART0_IRQ_IRQn
-// RXFIFO Full interrupt threshold. Set the same as the ESP-IDF UART driver
-#define RXFIFO_FULL_THR (SOC_UART_FIFO_LEN - 8)
+static const char *TAG = "uart_events";
 
-// RXFIFO RX timeout threshold. This is in bit periods, so 10==one byte. Same as ESP-IDF UART driver.
-#define RXFIFO_RX_TIMEOUT (10)
-#define GPIO_Rx 1
-#define GPIO_Tx 0
+#define EX_UART_NUM UART_NUM_0
+#define PATTERN_CHR_NUM                                                        \
+  (3) /*!< Set the number of consecutive and identical characters received by  \
+         receiver which defines a UART pattern*/
 
-// Write tx bytes to the serial port
-static void kick_tx(void) {
-  uart_hal_context_t repl_hal = UART_HAL();
-  uart_dev_t * hw =UART_LL_GET_HW(UART_CONSOLE);
-  for (;;) {
-    uint8_t *data;
-    int ret = serial_get_tx_byte(&data);
-    if (ret) {
-      // No more data to send - disable tx irq
-      break;
-    }
-    hw->fifo.val = (int)data;
+#define BUF_SIZE (1024)
+#define RD_BUF_SIZE (BUF_SIZE)
+static QueueHandle_t uart0_queue;
+
+
+
+
+
+void kick_tx()
+{
+  size_t buffered_size =0;
+  uint8_t data;
+  uint8_t tx_buffer[96];
+  while (!serial_get_tx_byte(&data))
+  {
+    tx_buffer[buffered_size] = data;
+    buffered_size++;
   }
-
+  if (buffered_size)
+  {
+    uart_write_bytes(EX_UART_NUM, (const char*) tx_buffer, buffered_size);
+  }
 }
 
-static void  UARTx_IRQHandler(void *arg) {
 
-    uint8_t rbuf[SOC_UART_FIFO_LEN];
-    int len;
-    uart_hal_context_t repl_hal = UART_HAL();
-
-    uart_hal_clr_intsts_mask(&repl_hal, UART_INTR_RXFIFO_FULL | UART_INTR_RXFIFO_TOUT | UART_INTR_FRAM_ERR);
-
-    len = uart_hal_get_rxfifo_len(&repl_hal);
-
-    uart_hal_read_rxfifo(&repl_hal, rbuf, &len);
-
-    for (int i = 0; i < len; i++) {
-        serial_rx_byte(rbuf[i]);
+static void uart_event_task(void *pvParameters) {
+  uart_event_t event;
+  
+  uint8_t *dtmp = (uint8_t *)malloc(RD_BUF_SIZE);
+  
+  for (;;) {
+    if (xQueueReceive(uart0_queue, (void *)&event, (TickType_t)portMAX_DELAY)) {
+      bzero(dtmp, RD_BUF_SIZE);
+      ESP_LOGI(TAG, "uart[%d] event:", EX_UART_NUM);
+      switch (event.type) {
+      case UART_DATA:
+      
+        ESP_LOGI(TAG, "[UART DATA]: %d", event.size);
+        uart_read_bytes(EX_UART_NUM, dtmp, event.size, portMAX_DELAY);
+        for (size_t i = 0; i < event.size; i++) {
+          serial_rx_byte(dtmp[i]);
+        }
+        kick_tx();
+        break;
+      default:
+        ESP_LOGI(TAG, "uart event type: %d", event.type);
+        break;
+      }
     }
-
-    kick_tx();
-}
-
-void serial_enable_tx_irq(void) {
-
-    // irqstatus_t flag = irq_save();
-    kick_tx();
-    // irq_restore(flag);
+  }
+  free(dtmp);
+  dtmp = NULL;
+  vTaskDelete(NULL);
 }
 
 void serial_init(void) {
+  esp_log_level_set(TAG, ESP_LOG_INFO);
 
-  uart_hal_context_t uart_hal = UART_HAL();
-  soc_module_clk_t sclk;
+  /* Configure parameters of an UART driver,
+   * communication pins and install the driver */
+  uart_config_t uart_config = {
+      .baud_rate = 115200,
+      .data_bits = UART_DATA_8_BITS,
+      .parity = UART_PARITY_DISABLE,
+      .stop_bits = UART_STOP_BITS_1,
+      .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+      .source_clk = UART_SCLK_DEFAULT,
+  };
+  // Install UART driver, and get the queue.
+  uart_driver_install(EX_UART_NUM, BUF_SIZE * 2, BUF_SIZE * 2, 20, &uart0_queue,
+                      0);
+  uart_param_config(EX_UART_NUM, &uart_config);
 
-  uint32_t sclk_freq;
-  uart_hal_get_sclk(&uart_hal,
-                    &sclk); // To restore SCLK after uart_hal_init() resets it
-  ESP_ERROR_CHECK(uart_get_sclk_freq(sclk, &sclk_freq));
-  uart_hal_init(&uart_hal, UART_CONSOLE); // Sets defaults: 8n1, no flow control
+  // Set UART log level
+  esp_log_level_set(TAG, ESP_LOG_INFO);
+  // Set UART pins (using UART0 default pins ie no changes.)
+  uart_set_pin(EX_UART_NUM, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE,
+               UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
-  esp_rom_gpio_connect_out_signal(GPIO_Tx, UART_PERIPH_SIGNAL(UART_CONSOLE, SOC_UART_TX_PIN_IDX), 0, 0);
-  esp_rom_gpio_connect_out_signal(GPIO_Rx, UART_PERIPH_SIGNAL(UART_CONSOLE, SOC_UART_RX_PIN_IDX), 0, 0);
-  uart_hal_set_sclk(&uart_hal, sclk);
-  uart_hal_set_baudrate(&uart_hal, CONFIG_SERIAL_BAUD, sclk_freq);
-  uart_hal_rxfifo_rst(&uart_hal);
-  uart_hal_txfifo_rst(&uart_hal);
+  // Set uart pattern detect function.
+  uart_enable_pattern_det_baud_intr(EX_UART_NUM, '+', PATTERN_CHR_NUM, 9, 0, 0);
+  // Reset the pattern queue length to record at most 20 pattern positions.
+  uart_pattern_queue_reset(EX_UART_NUM, 20);
 
-  ESP_ERROR_CHECK(esp_intr_alloc(uart_periph_signal[UART_CONSOLE].irq,
-                                 ESP_INTR_FLAG_LOWMED,
-                                 UARTx_IRQHandler, NULL, NULL));
-  uart_hal_set_rxfifo_full_thr(&uart_hal, RXFIFO_FULL_THR);
-  uart_hal_set_rx_timeout(&uart_hal, RXFIFO_RX_TIMEOUT);
-  uart_hal_ena_intr_mask(&uart_hal,
-                         UART_INTR_RXFIFO_FULL | UART_INTR_RXFIFO_TOUT);
+  // Create a task to handler UART event from ISR
+  xTaskCreate(uart_event_task, "uart_event_task", 1024 * 4, NULL, 12, NULL);
 }
+
 DECL_INIT(serial_init);
+
+void serial_enable_tx_irq(void) {
+  kick_tx();
+}
