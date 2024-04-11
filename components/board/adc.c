@@ -1,7 +1,4 @@
-// ADC functions on rp2040
-//
-// Copyright (C) 2021  Kevin O'Connor <kevin@koconnor.net>
-//
+// ADC functions on esp32
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
 #include "board/gpio.h" // gpio_adc_setup
@@ -114,7 +111,7 @@ static uint8_t last_analog_read = ADC_DUMMY;
 // returns the number of clock ticks the caller should wait before
 // retrying this function.
 uint32_t gpio_adc_sample(struct gpio_adc g) {
-  return timer_from_us(5); // Sample takes 2us but provide extra time
+  return 0;
 }
 
 // Read a value; use only after gpio_adc_sample() returns zero
