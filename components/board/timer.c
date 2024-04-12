@@ -1,9 +1,3 @@
-// rp2040 timer support
-//
-// Copyright (C) 2021  Kevin O'Connor <kevin@koconnor.net>
-//
-// This file may be distributed under the terms of the GNU GPLv3 license.
-
 #include "board/irq.h"       // irq_disable
 #include "board/misc.h"      // timer_read_time
 #include "board/timer_irq.h" // timer_dispatch_many

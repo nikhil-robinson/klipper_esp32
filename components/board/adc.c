@@ -1,6 +1,3 @@
-// ADC functions on esp32
-// This file may be distributed under the terms of the GNU GPLv3 license.
-
 #include "board/gpio.h" // gpio_adc_setup
 #include "board/misc.h" // timer_from_us
 #include "command.h"    // shutdown
@@ -110,9 +107,7 @@ static uint8_t last_analog_read = ADC_DUMMY;
 // Try to sample a value. Returns zero if sample ready, otherwise
 // returns the number of clock ticks the caller should wait before
 // retrying this function.
-uint32_t gpio_adc_sample(struct gpio_adc g) {
-  return 0;
-}
+uint32_t gpio_adc_sample(struct gpio_adc g) { return 0; }
 
 // Read a value; use only after gpio_adc_sample() returns zero
 uint16_t gpio_adc_read(struct gpio_adc g) {

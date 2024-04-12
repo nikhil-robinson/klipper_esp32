@@ -1,9 +1,3 @@
-// GPIO functions on rp2040
-//
-// Copyright (C) 2021  Kevin O'Connor <kevin@koconnor.net>
-//
-// This file may be distributed under the terms of the GNU GPLv3 license.
-
 #include "board/gpio.h" // gpio_out_setup
 #include "board/irq.h"  // irq_save
 #include "command.h"    // shutdown

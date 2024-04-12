@@ -35,7 +35,7 @@ static struct task_wake console_wake;
 static uint8_t receive_buf[BUF_SIZE];
 static int receive_pos;
 
-static volatile size_t recv_size =0;
+static volatile size_t recv_size = 0;
 
 static void uart_event_task(void *pvParameters) {
   uart_event_t event;
@@ -84,8 +84,8 @@ int console_setup() {
   // Set UART log level
   esp_log_level_set(TAG, ESP_LOG_INFO);
   // Set UART pins (using UART0 default pins ie no changes.)
-  uart_set_pin(EX_UART_NUM, UART_TX_NUM, UART_RX_NUM,
-               UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+  uart_set_pin(EX_UART_NUM, UART_TX_NUM, UART_RX_NUM, UART_PIN_NO_CHANGE,
+               UART_PIN_NO_CHANGE);
   uart_pattern_queue_reset(EX_UART_NUM, 20);
 
   // Create a task to handler UART event from ISR
@@ -104,7 +104,8 @@ void console_task(void) {
   if (!sched_check_wake(&console_wake))
     return;
 
-  int ret =uart_read_bytes(EX_UART_NUM, &receive_buf[receive_pos], sizeof(receive_buf) - receive_pos, portMAX_DELAY);
+  int ret = uart_read_bytes(EX_UART_NUM, &receive_buf[receive_pos],
+                            sizeof(receive_buf) - receive_pos, portMAX_DELAY);
   if (ret == 15 && receive_buf[receive_pos + 14] == '\n' &&
       memcmp(&receive_buf[receive_pos], "FORCE_SHUTDOWN\n", 15) == 0)
 
@@ -133,13 +134,10 @@ void console_sendf(const struct command_encoder *ce, va_list args) {
   uint8_t buf[MESSAGE_MAX];
   uint_fast8_t msglen = command_encode_and_frame(buf, ce, args);
 
-  int ret =uart_write_bytes(EX_UART_NUM, (const char *)buf, msglen);
+  int ret = uart_write_bytes(EX_UART_NUM, (const char *)buf, msglen);
   if (ret < 0)
     report_errno("write", ret);
 }
 
 // Sleep until a signal received (waking early for console input if needed)
-void console_sleep(sigset_t *sigset) {
-
-    
-}
+void console_sleep(sigset_t *sigset) {}
