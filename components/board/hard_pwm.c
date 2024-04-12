@@ -1,3 +1,9 @@
+// Hardware PWM support on rp2040
+//
+// Copyright (C) 2021  Lasse Dalegaard <dalegaard@gmail.com>
+//
+// This file may be distributed under the terms of the GNU GPLv3 license.
+
 #include "board/gpio.h" // gpio_pwm_write
 #include "board/gpio.h"
 #include "command.h" // DECL_CONSTANT

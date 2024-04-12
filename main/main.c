@@ -21,4 +21,5 @@ void app_main(void)
 {
     console_setup();
     sched_main();
+    // sendf("This is a test");
 }

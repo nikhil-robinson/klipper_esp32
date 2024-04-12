@@ -1,113 +1,76 @@
-// Example code for running timers in a polling mode
+// rp2040 timer support
 //
-// Copyright (C) 2018  Kevin O'Connor <kevin@koconnor.net>
+// Copyright (C) 2021  Kevin O'Connor <kevin@koconnor.net>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
-#include <time.h> // struct timespec
-#include <unistd.h> // usleep
-#include "autoconf.h" // CONFIG_CLOCK_FREQ
-#include "board/irq.h" // irq_disable
-#include "board/misc.h" // timer_from_us
+#include "board/irq.h"       // irq_disable
+#include "board/misc.h"      // timer_read_time
 #include "board/timer_irq.h" // timer_dispatch_many
-#include "command.h" // DECL_CONSTANT
-#include "sched.h" // DECL_INIT
-
+#include "command.h"         // DECL_SHUTDOWN
+#include "driver/gptimer.h"
+#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
+#include "sched.h" // DECL_INIT
+#include <stdio.h>
 
-// Helper function that returns the system time as a 32bit counter
-static uint32_t
-get_system_time(void)
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    double t = (double)ts.tv_sec + (double)ts.tv_nsec * .000000001;
-    return (uint32_t)(t * CONFIG_CLOCK_FREQ);
-}
-
+static gptimer_handle_t gptimer = NULL;
 
 /****************************************************************
- * Timers
+ * Low level timer code
  ****************************************************************/
 
-static uint32_t next_wake_time;
-
 // Return the current time (in absolute clock ticks).
-uint32_t
-timer_read_time(void)
-{
-    return get_system_time();
+uint32_t timer_read_time(void) {
+  uint32_t count;
+  ESP_ERROR_CHECK(gptimer_get_raw_count(gptimer, &count));
+  return count;
+}
+
+static inline void timer_set(uint32_t next) {
+  gptimer_alarm_config_t alarm_config = {
+      .alarm_count = next, // period = 1s
+  };
+  ESP_ERROR_CHECK(gptimer_set_alarm_action(gptimer, &alarm_config));
+  ESP_ERROR_CHECK(gptimer_start(gptimer));
 }
 
 // Activate timer dispatch as soon as possible
-void
-timer_kick(void)
-{
-    next_wake_time = timer_read_time();
-}
-
-// Invoke timers - called below from irq_poll()
-static void
-do_timer_dispatch(void)
-{
-    next_wake_time = timer_dispatch_many();
-}
-
-void
-timer_init(void)
-{
-    timer_kick();
-}
-DECL_INIT(timer_init);
-
+void timer_kick(void) { timer_set(timer_read_time() + 50); }
 
 /****************************************************************
- * Interrupts
+ * Setup and irqs
  ****************************************************************/
 
-// Disable hardware interrupts
-void
-irq_disable(void)
-{
+static bool IRAM_ATTR example_timer_on_alarm_cb_v1(
+    gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata,
+    void *user_data) {
+
+  BaseType_t high_task_awoken = pdFALSE;
+  gptimer_stop(timer);
+  uint32_t next = timer_dispatch_many();
+  timer_set(next);
+  return (high_task_awoken == pdTRUE);
 }
 
-// Enable hardware interrupts
-void
-irq_enable(void)
-{
-}
+void timer_init(void) {
+  irq_disable();
+  gptimer_config_t timer_config = {
+      .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+      .direction = GPTIMER_COUNT_UP,
+      .resolution_hz = 1000000, // 1MHz, 1 tick=1us
+  };
+  ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &gptimer));
 
-// Disable hardware interrupts in not already disabled
-irqstatus_t
-irq_save(void)
-{
-    return 0;
-}
+  gptimer_event_callbacks_t cbs = {
+      .on_alarm = example_timer_on_alarm_cb_v1,
+  };
+  ESP_ERROR_CHECK(gptimer_register_event_callbacks(gptimer, &cbs, NULL));
 
-// Restore hardware interrupts to state from flag returned by irq_save()
-void
-irq_restore(irqstatus_t flag)
-{
+  ESP_ERROR_CHECK(gptimer_enable(gptimer));
+  timer_kick();
+  irq_enable();
 }
-
-// Atomically enable hardware interrupts and sleep processor until next irq
-void
-irq_wait(void)
-{
-    // XXX - sleep to prevent excessive cpu usage in simulator
-    vTaskDelay(1);
-
-    irq_poll();
-}
-
-// Check if an interrupt is active (used only on architectures that do
-// not have hardware interrupts)
-void
-irq_poll(void)
-{
-    uint32_t now = timer_read_time();
-    if (!timer_is_before(now, next_wake_time))
-        do_timer_dispatch();
-}
+DECL_INIT(timer_init);
