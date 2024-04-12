@@ -25,8 +25,8 @@ static const char *TAG = "uart_events";
 
 #define EX_UART_NUM UART_NUM_1
 
-#define UART_RX_NUM 23
-#define UART_TX_NUM 24
+#define UART_RX_NUM 17
+#define UART_TX_NUM 16
 
 #define BUF_SIZE (4096)
 static QueueHandle_t uart0_queue;

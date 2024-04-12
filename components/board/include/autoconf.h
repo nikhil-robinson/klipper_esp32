@@ -1,3 +1,5 @@
+#include "sdkconfig.h"
+
 #define CONFIG_LOW_LEVEL_OPTIONS 1
 #define CONFIG_MACH_AVR 0
 #define CONFIG_MACH_ATSAM 0
