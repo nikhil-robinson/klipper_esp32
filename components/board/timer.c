@@ -47,13 +47,11 @@ void timer_kick(void) { timer_set(timer_read_time() + 50); }
 static bool IRAM_ATTR example_timer_on_alarm_cb_v1(
     gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata,
     void *user_data) {
-  irq_disable();
+
   BaseType_t high_task_awoken = pdFALSE;
   gptimer_stop(timer);
-
   uint32_t next = timer_dispatch_many();
   timer_set(next);
-  irq_enable();
   return (high_task_awoken == pdTRUE);
 }
 

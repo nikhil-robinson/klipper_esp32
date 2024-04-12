@@ -23,7 +23,9 @@
 
 static const char *TAG = "uart_events";
 
-#define EX_UART_NUM UART_NUM_0
+#define EX_UART_NUM UART_NUM_1
+#define UART_RX_NUM 19
+#define UART_TX_NUM 19
 #define BUF_SIZE (4096)
 static QueueHandle_t uart0_queue;
 
@@ -61,7 +63,7 @@ void report_errno(char *where, int rc) {
   fprintf(stderr, "Got error %d in %s\n", rc, where);
 }
 
-int console_setup(char *name) {
+int console_setup() {
   esp_log_level_set(TAG, ESP_LOG_INFO);
 
   uart_config_t uart_config = {
@@ -128,7 +130,7 @@ void console_sendf(const struct command_encoder *ce, va_list args) {
   // Generate message
   uint8_t buf[MESSAGE_MAX];
   uint_fast8_t msglen = command_encode_and_frame(buf, ce, args);
-  
+
   int ret =uart_write_bytes(EX_UART_NUM, (const char *)buf, msglen);
   if (ret < 0)
     report_errno("write", ret);

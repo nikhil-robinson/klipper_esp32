@@ -1,7 +1,9 @@
 
 #include <string.h>
+#include "board/misc.h" // console_sendf
+#include "command.h" // DECL_CONSTANT
+#include "board/internal.h" // console_setup
 #include "sched.h" // sched_main
-#include "command.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -17,6 +19,7 @@ DECL_COMMAND_FLAGS(command_config_reset, HF_IN_SHUTDOWN, "config_reset");
 
 void app_main(void)
 {
-    xTaskCreate(sched_main, "sched main", 1024 * 4, NULL, 12, NULL);
-    sendf("This is a test");
+    console_setup();
+    sched_main();
+    // sendf("This is a test");
 }
