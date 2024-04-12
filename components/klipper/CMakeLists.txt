@@ -28,7 +28,6 @@ idf_component_register(SRCS "klipper/src/adccmds.c"
                             "klipper/src/trsync.c"
                             "klipper/src/generic/alloc.c"
                             "klipper/src/generic/crc16_ccitt.c" 
-                            "klipper/src/generic/serial_irq.c"
                             "klipper/src/generic/timer_irq.c"
                     INCLUDE_DIRS "klipper/src/"
                     REQUIRES board)
