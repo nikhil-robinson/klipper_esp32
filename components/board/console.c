@@ -24,8 +24,10 @@
 static const char *TAG = "uart_events";
 
 #define EX_UART_NUM UART_NUM_1
-#define UART_RX_NUM 19
-#define UART_TX_NUM 19
+
+#define UART_RX_NUM 23
+#define UART_TX_NUM 24
+
 #define BUF_SIZE (4096)
 static QueueHandle_t uart0_queue;
 
@@ -82,7 +84,7 @@ int console_setup() {
   // Set UART log level
   esp_log_level_set(TAG, ESP_LOG_INFO);
   // Set UART pins (using UART0 default pins ie no changes.)
-  uart_set_pin(EX_UART_NUM, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE,
+  uart_set_pin(EX_UART_NUM, UART_TX_NUM, UART_RX_NUM,
                UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
   uart_pattern_queue_reset(EX_UART_NUM, 20);
 
