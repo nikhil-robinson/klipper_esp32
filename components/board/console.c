@@ -62,7 +62,7 @@ static void uart_event_task(void *pvParameters) {
 }
 
 void report_errno(char *where, int rc) {
-  fprintf(stderr, "Got error %d in %s\n", rc, where);
+  printf( "Got error %d in %s\n", rc, where);
 }
 
 int console_setup() {
@@ -86,10 +86,10 @@ int console_setup() {
   // Set UART pins (using UART0 default pins ie no changes.)
   uart_set_pin(EX_UART_NUM, UART_TX_NUM, UART_RX_NUM,
                UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-  uart_pattern_queue_reset(EX_UART_NUM, 20);
+  // uart_pattern_queue_reset(EX_UART_NUM, 20);
 
-  // Create a task to handler UART event from ISR
-  xTaskCreate(uart_event_task, "uart_event_task", 1024 * 4, NULL, 12, NULL);
+  // // Create a task to handler UART event from ISR
+  // xTaskCreate(uart_event_task, "uart_event_task", 1024 * 4, NULL, 12, NULL);
   return 0;
 }
 
@@ -101,16 +101,19 @@ void *console_receive_buffer(void) { return receive_buf; }
 
 // Process any incoming commands
 void console_task(void) {
-  if (!sched_check_wake(&console_wake))
-    return;
+  // if (!sched_check_wake(&console_wake))
+  //   return;
 
   int ret =uart_read_bytes(EX_UART_NUM, &receive_buf[receive_pos], sizeof(receive_buf) - receive_pos, portMAX_DELAY);
+  printf("%s\n", (char *)receive_buf);
   if (ret == 15 && receive_buf[receive_pos + 14] == '\n' &&
       memcmp(&receive_buf[receive_pos], "FORCE_SHUTDOWN\n", 15) == 0)
 
   {
     shutdown("Force shutdown command");
   }
+
+  
 
   // Find and dispatch message blocks in the input
   int len = receive_pos + ret;
@@ -120,7 +123,7 @@ void console_task(void) {
     len -= pop_count;
     if (len) {
       memmove(receive_buf, &receive_buf[pop_count], len);
-      sched_wake_task(&console_wake);
+      sched_wake_tasks();;
     }
   }
   receive_pos = len;
