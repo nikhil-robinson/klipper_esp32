@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include "hal/uart_hal.h"
 #include "soc/uart_periph.h"
+#include "esp_clk_tree.h"
 
 static const char *TAG = "uart_events";
 
@@ -79,8 +80,15 @@ void serial_init(void)
 {
     uart_hal_context_t repl_hal = REPL_HAL_DEFN();
 
+
+
+
     uart_hal_init(&repl_hal, UART_NUM); // Sets defaults: 8n1, no flow control
-    uart_hal_set_baudrate(&repl_hal, CONFIG_SERIAL_BAUD, UART_SCLK_DEFAULT);
+    uint32_t sclk_freq;
+    soc_module_clk_t src_clk;
+    uart_hal_get_sclk(&repl_hal, &src_clk);
+    esp_clk_tree_src_get_freq_hz(src_clk, ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED, &sclk_freq);
+    uart_hal_set_baudrate(&repl_hal, CONFIG_SERIAL_BAUD, sclk_freq);
     uart_hal_rxfifo_rst(&repl_hal);
     uart_hal_txfifo_rst(&repl_hal);
 
