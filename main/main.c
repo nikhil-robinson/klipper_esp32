@@ -21,7 +21,5 @@ DECL_COMMAND_FLAGS(command_config_reset, HF_IN_SHUTDOWN, "config_reset");
 
 void app_main(void)
 {
-    console_setup();
     sched_main();
-    // sendf("This is a test");
 }
