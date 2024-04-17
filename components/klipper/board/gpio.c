@@ -15,52 +15,8 @@
  ****************************************************************/
 
 // DECL_ENUMERATION_RANGE("pin", "GPIO_NUM_", 0, 30);
-DECL_ENUMERATION_RANGE("pin", "P0", 0, 30);
-DECL_ENUMERATION_RANGE("pin", "P1", 1, 30);
-DECL_ENUMERATION_RANGE("pin", "P2", 2, 30);
-DECL_ENUMERATION_RANGE("pin", "P3", 3, 30);
-DECL_ENUMERATION_RANGE("pin", "P4", 4, 30);
-DECL_ENUMERATION_RANGE("pin", "P5", 5, 30);
-DECL_ENUMERATION_RANGE("pin", "P6", 6, 30);
-DECL_ENUMERATION_RANGE("pin", "P7", 7, 30);
-DECL_ENUMERATION_RANGE("pin", "P8", 8, 30);
-DECL_ENUMERATION_RANGE("pin", "P9", 9, 30);
-DECL_ENUMERATION_RANGE("pin", "P10", 10, 30);
-DECL_ENUMERATION_RANGE("pin", "P11",11, 30);
-DECL_ENUMERATION_RANGE("pin", "P12", 12, 30);
-DECL_ENUMERATION_RANGE("pin", "P13", 13, 30);
-DECL_ENUMERATION_RANGE("pin", "P14", 14, 30);
-DECL_ENUMERATION_RANGE("pin", "P15", 15, 30);
-DECL_ENUMERATION_RANGE("pin", "P16", 16, 30);
-DECL_ENUMERATION_RANGE("pin", "P17", 17, 30);
-DECL_ENUMERATION_RANGE("pin", "P18", 18, 30);
-DECL_ENUMERATION_RANGE("pin", "P19", 19, 30);
-DECL_ENUMERATION_RANGE("pin", "P20", 20, 30);
-DECL_ENUMERATION_RANGE("pin", "P21", 21, 30);
-DECL_ENUMERATION_RANGE("pin", "P22", 22, 30);
-DECL_ENUMERATION_RANGE("pin", "P23", 23, 30);
-DECL_ENUMERATION_RANGE("pin", "P24", 24, 30);
+DECL_ENUMERATION_RANGE("pin", "GPIO_NUM_0", 0, 30);
 
-
-// // Set the mode and extended function of a pin
-// void
-// gpio_peripheral(uint32_t gpio, int func, int pull_up)
-// {
-//     // padsbank0_hw->io[gpio] = (
-//     //     PADS_BANK0_GPIO0_IE_BITS
-//     //     | (PADS_BANK0_GPIO0_DRIVE_VALUE_4MA << PADS_BANK0_GPIO0_DRIVE_MSB)
-//     //     | (pull_up > 0 ? PADS_BANK0_GPIO0_PUE_BITS : 0)
-//     //     | (pull_up < 0 ? PADS_BANK0_GPIO0_PDE_BITS : 0));
-//     // iobank0_hw->io[gpio].ctrl = func << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-// }
-
-// // Convert a register and bit location back to an integer pin identifier
-// static int
-// mask_to_pin(uint32_t mask)
-// {
-//     // return ffs(mask)-1;
-//     return 0;
-// }
 
 /****************************************************************
  * General Purpose Input Output (GPIO) pins
