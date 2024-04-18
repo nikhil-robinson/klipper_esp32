@@ -8,18 +8,19 @@
 #include "esp_adc/adc_oneshot.h"
 #include <stdint.h> // uint32_t
 
-struct gpio_out {
-  gpio_num_t pin;
-  uint8_t val;
+ struct gpio_out {
+  uint32_t pin;
+  uint32_t state;
+  
 };
-struct gpio_out gpio_out_setup(uint8_t pin, uint8_t val);
-void gpio_out_reset(struct gpio_out g, uint8_t val);
+struct gpio_out gpio_out_setup(uint32_t gpio_num, uint32_t val);
+void gpio_out_reset(struct gpio_out g, uint32_t val);
 void gpio_out_toggle_noirq(struct gpio_out g);
 void gpio_out_toggle(struct gpio_out g);
-void gpio_out_write(struct gpio_out g, uint8_t val);
+void gpio_out_write(struct gpio_out g, uint32_t val);
 
 struct gpio_in {
-  gpio_num_t pin;
+  uint32_t pin;
 };
 struct gpio_in gpio_in_setup(uint8_t pin, int8_t pull_up);
 void gpio_in_reset(struct gpio_in g, int8_t pull_up);
