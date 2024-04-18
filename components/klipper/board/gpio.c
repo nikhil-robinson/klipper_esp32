@@ -42,8 +42,6 @@ void gpio_out_reset(struct gpio_out g, uint32_t val) {
 }
 
 void gpio_out_toggle_noirq(struct gpio_out g) {
-
-  uint32_t val = (hw->out_w1ts.out_w1ts >> g.pin) & 0x01;
   //gpio_out_write(g,!level);
   // gpio_set_level(g.pin, g.val);
   // sio_hw->gpio_togl = g.bit;
