@@ -16,8 +16,8 @@ ctr_run_initfuncs(void)
     initial_pins_setup();
     extern void timer_init(void);
     timer_init();
-    extern void serial_init(void);
-    serial_init();
+    extern void console_setup(void);
+    console_setup();
 }
 
 void

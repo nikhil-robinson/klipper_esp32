@@ -1,107 +1,159 @@
-// rp2040 serial
+// TTY based IO
 //
-// Copyright (C) 2021  Kevin O'Connor <kevin@koconnor.net>
+// Copyright (C) 2017-2021  Kevin O'Connor <kevin@koconnor.net>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
-#include <stdint.h>           // uint32_t
-#include "autoconf.h"         // CONFIG_SERIAL
-#include "board/irq.h"        // irq_save
-#include "board/serial_irq.h" // serial_rx_data
-#include "board/internal.h"   // UART0_IRQn
-#include "sched.h"            // DECL_INIT
-
+#define _GNU_SOURCE
+#include <errno.h> // errno
+#include <stdio.h> // fprintf
+#include <string.h> // memmove
+#include "board/irq.h" // irq_wait
+#include "board/misc.h" // console_sendf
+#include "command.h" // command_find_block
+#include "board/internal.h" // console_setup
+#include "sched.h" // sched_wake_task
 #include <stdio.h>
-#include "hal/uart_hal.h"
-#include "soc/uart_periph.h"
-#include "esp_clk_tree.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "driver/uart.h"
+#include "driver/gpio.h"
+#include "sdkconfig.h"
+#include "esp_log.h"
 
-static const char *TAG = "uart_events";
+#define ECHO_TEST_TXD (24)
+#define ECHO_TEST_RXD (23)
+#define ECHO_TEST_RTS (UART_PIN_NO_CHANGE)
+#define ECHO_TEST_CTS (UART_PIN_NO_CHANGE)
 
-#define RD_BUF_SIZE (192)
+#define ECHO_UART_PORT_NUM      (1)
+#define ECHO_UART_BAUD_RATE     (CONFIG_EXAMPLE_UART_BAUD_RATE)
+#define ECHO_TASK_STACK_SIZE    (CONFIG_EXAMPLE_TASK_STACK_SIZE)
 
-#define UART_NUM 0
-
-// Write tx bytes to the serial port
-
-#define REPL_HAL_DEFN() { .dev = UART_LL_GET_HW(UART_NUM) }
-
-#define RXFIFO_FULL_THR (SOC_UART_FIFO_LEN - 8)
-
-// RXFIFO RX timeout threshold. This is in bit periods, so 10==one byte. Same as ESP-IDF UART driver.
-#define RXFIFO_RX_TIMEOUT (10)
-
-static void
-kick_tx(void)
+// Report 'errno' in a message written to stderr
+void
+report_errno(char *where, int rc)
 {
-    size_t remaining = 0;
-    uint8_t tx_buffer[96];
-    uart_hal_context_t repl_hal = REPL_HAL_DEFN();
-    uint32_t written = 0;
+    int e = errno;
+    printf("Got error %d in %s: (%d)%s\n", rc, where, e, strerror(e));
+}
 
-    for (;;)
-    {
-        uint8_t data;
-        int ret = serial_get_tx_byte(&data);
-        if (ret)
-        {
-            break;
+static struct task_wake console_wake;
+static uint8_t receive_buf[4096];
+static int receive_pos;
+
+/****************************************************************
+ * Setup
+ ****************************************************************/
+
+int
+console_setup(char *name)
+{
+    uart_config_t uart_config = {
+        .baud_rate = CONFIG_SERIAL_BAUD,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+    int intr_alloc_flags = 0;
+
+#if CONFIG_UART_ISR_IN_IRAM
+    intr_alloc_flags = ESP_INTR_FLAG_IRAM;
+#endif
+
+    ESP_ERROR_CHECK(uart_driver_install(ECHO_UART_PORT_NUM, sizeof(receive_buf) * 2, 0, 0, NULL, intr_alloc_flags));
+    ESP_ERROR_CHECK(uart_param_config(ECHO_UART_PORT_NUM, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(ECHO_UART_PORT_NUM, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS));
+
+
+    return 0;
+}
+
+
+/****************************************************************
+ * Console handling
+ ****************************************************************/
+
+
+
+void *
+console_receive_buffer(void)
+{
+    return receive_buf;
+}
+
+// Process any incoming commands
+void
+console_task(void)
+{
+    if (!sched_check_wake(&console_wake))
+        return;
+
+    // Read data
+    // int ret = read(main_pfd[MP_TTY_IDX].fd, &receive_buf[receive_pos]
+    //                , sizeof(receive_buf) - receive_pos);
+
+    int ret = uart_read_bytes(ECHO_UART_PORT_NUM, &receive_buf[receive_pos], sizeof(receive_buf) - receive_pos, 0);
+    if (ret < 0) {
+        if (errno == EWOULDBLOCK) {
+            ret = 0;
+        } else {
+            report_errno("read", ret);
+            return;
         }
-        tx_buffer[remaining++] = data;
     }
+    if (ret == 15 && receive_buf[receive_pos+14] == '\n'
+        && memcmp(&receive_buf[receive_pos], "FORCE_SHUTDOWN\n", 15) == 0)
+        shutdown("Force shutdown command");
 
-    uart_hal_write_txfifo(&repl_hal, (const void *)tx_buffer, remaining, &written);
-}
-
-// all code executed in ISR must be in IRAM, and any const data must be in DRAM
-static void IRAM_ATTR uart_irq_handler(void *arg)
-{
-    uint8_t rbuf[SOC_UART_FIFO_LEN];
-    int len;
-    uart_hal_context_t repl_hal = REPL_HAL_DEFN();
-    uart_hal_clr_intsts_mask(&repl_hal, UART_INTR_RXFIFO_FULL | UART_INTR_RXFIFO_TOUT | UART_INTR_FRAM_ERR);
-    len = uart_hal_get_rxfifo_len(&repl_hal);
-    uart_hal_read_rxfifo(&repl_hal, rbuf, &len);
-    for (int i = 0; i < len; i++)
-    {
-        serial_rx_byte(rbuf[i]);
+    // Find and dispatch message blocks in the input
+    int len = receive_pos + ret;
+    uint_fast8_t pop_count, msglen = len > MESSAGE_MAX ? MESSAGE_MAX : len;
+    ret = command_find_and_dispatch(receive_buf, msglen, &pop_count);
+    if (ret) {
+        len -= pop_count;
+        if (len) {
+            memmove(receive_buf, &receive_buf[pop_count], len);
+            sched_wake_task(&console_wake);
+        }
     }
-    kick_tx();
+    receive_pos = len;
 }
+DECL_TASK(console_task);
 
-void serial_enable_tx_irq(void)
+// Encode and transmit a "response" message
+void
+console_sendf(const struct command_encoder *ce, va_list args)
 {
-    irqstatus_t flag = irq_save();
-    kick_tx();
-    irq_restore(flag);
+    // Generate message
+    uint8_t buf[MESSAGE_MAX];
+    uint_fast8_t msglen = command_encode_and_frame(buf, ce, args);
+
+    // Transmit message
+    // int ret = write(main_pfd[MP_TTY_IDX].fd, buf, msglen);
+    uart_write_bytes(ECHO_UART_PORT_NUM, buf, msglen);
+    // if (ret < 0)
+    //     report_errno("write", ret);
 }
 
-void serial_init(void)
+
+void console_kick()
 {
-    uart_hal_context_t repl_hal = REPL_HAL_DEFN();
-
-
-
-
-    uart_hal_init(&repl_hal, UART_NUM); // Sets defaults: 8n1, no flow control
-    uint32_t sclk_freq;
-    soc_module_clk_t src_clk;
-    uart_hal_get_sclk(&repl_hal, &src_clk);
-    esp_clk_tree_src_get_freq_hz(src_clk, ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED, &sclk_freq);
-    uart_hal_set_baudrate(&repl_hal, CONFIG_SERIAL_BAUD, sclk_freq);
-    uart_hal_rxfifo_rst(&repl_hal);
-    uart_hal_txfifo_rst(&repl_hal);
-
-    ESP_ERROR_CHECK(
-        esp_intr_alloc(uart_periph_signal[UART_NUM].irq,
-                       ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM,
-                       uart_irq_handler,
-                       NULL,
-                       NULL));
-
-    // Enable RX interrupts
-    uart_hal_set_rxfifo_full_thr(&repl_hal, RXFIFO_FULL_THR);
-    uart_hal_set_rx_timeout(&repl_hal, RXFIFO_RX_TIMEOUT);
-    uart_hal_ena_intr_mask(&repl_hal, UART_INTR_RXFIFO_FULL | UART_INTR_RXFIFO_TOUT);
+    sched_wake_task(&console_wake);
 }
-DECL_INIT(serial_init);
+
+// Sleep until a signal received (waking early for console input if needed)
+void
+console_sleep(void *sigset)
+{
+    // int ret = ppoll(main_pfd, ARRAY_SIZE(main_pfd), NULL, sigset);
+    // if (ret <= 0) {
+    //     if (errno != EINTR)
+    //         report_errno("ppoll main_pfd", ret);
+    //     return;
+    // }
+    // if (main_pfd[MP_TTY_IDX].revents)
+    //     sched_wake_task(&console_wake);
+}
