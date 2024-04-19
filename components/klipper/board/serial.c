@@ -21,13 +21,13 @@
 #include "sdkconfig.h"
 #include "esp_log.h"
 
-#define ECHO_TEST_TXD (24)
-#define ECHO_TEST_RXD (23)
+#define ECHO_TEST_TXD 24//(47)
+#define ECHO_TEST_RXD 23//(48)
 #define ECHO_TEST_RTS (UART_PIN_NO_CHANGE)
 #define ECHO_TEST_CTS (UART_PIN_NO_CHANGE)
 
 #define ECHO_UART_PORT_NUM      (1)
-#define ECHO_UART_BAUD_RATE     (CONFIG_EXAMPLE_UART_BAUD_RATE)
+#define ECHO_UART_BAUD_RATE     (CONFIG_SERIAL_BAUD)
 #define ECHO_TASK_STACK_SIZE    (CONFIG_EXAMPLE_TASK_STACK_SIZE)
 
 // Report 'errno' in a message written to stderr
@@ -95,7 +95,13 @@ console_task(void)
     // int ret = read(main_pfd[MP_TTY_IDX].fd, &receive_buf[receive_pos]
     //                , sizeof(receive_buf) - receive_pos);
 
-    int ret = uart_read_bytes(ECHO_UART_PORT_NUM, &receive_buf[receive_pos], sizeof(receive_buf) - receive_pos, 0);
+    int ret = uart_read_bytes(ECHO_UART_PORT_NUM, &receive_buf[receive_pos], sizeof(receive_buf) - receive_pos, 1);
+    // if (ret)
+    // {
+    //     printf("%s\n",receive_buf);
+    //     ESP_LOG_BUFFER_HEX("USB",receive_buf,ret);
+    // }
+    
     if (ret < 0) {
         if (errno == EWOULDBLOCK) {
             ret = 0;
@@ -142,18 +148,4 @@ console_sendf(const struct command_encoder *ce, va_list args)
 void console_kick()
 {
     sched_wake_task(&console_wake);
-}
-
-// Sleep until a signal received (waking early for console input if needed)
-void
-console_sleep(void *sigset)
-{
-    // int ret = ppoll(main_pfd, ARRAY_SIZE(main_pfd), NULL, sigset);
-    // if (ret <= 0) {
-    //     if (errno != EINTR)
-    //         report_errno("ppoll main_pfd", ret);
-    //     return;
-    // }
-    // if (main_pfd[MP_TTY_IDX].revents)
-    //     sched_wake_task(&console_wake);
 }

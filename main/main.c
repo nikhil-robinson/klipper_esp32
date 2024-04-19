@@ -19,7 +19,18 @@ void command_config_reset(uint32_t *args)
 }
 DECL_COMMAND_FLAGS(command_config_reset, HF_IN_SHUTDOWN, "config_reset");
 
+void main_task(void *pvparameters)
+{
+    for (;;)
+    {
+        sched_main();
+    }
+    vTaskDelete(NULL);
+    
+}
+
 void app_main(void)
 {
-    sched_main();
+    xTaskCreatePinnedToCore(main_task, "main_task", 4096, NULL, 20, NULL,
+                              0);
 }

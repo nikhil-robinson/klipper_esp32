@@ -18,6 +18,8 @@
 
 static gptimer_handle_t gptimer = NULL;
 
+volatile bool dispatch_timer = false;
+
 /****************************************************************
  * Low level timer code
  ****************************************************************/
@@ -29,7 +31,7 @@ uint32_t timer_read_time(void) {
   return count;
 }
 
-static inline void timer_set(uint32_t next) {
+void timer_set(uint32_t next) {
   gptimer_alarm_config_t alarm_config = {
       .alarm_count = next, // period = 1s
   };
@@ -50,8 +52,7 @@ static bool IRAM_ATTR example_timer_on_alarm_cb_v1(
 
   BaseType_t high_task_awoken = pdFALSE;
   gptimer_stop(timer);
-  uint32_t next = timer_dispatch_many();
-  timer_set(next);
+  dispatch_timer = true;
   return (high_task_awoken == pdTRUE);
 }
 
@@ -74,3 +75,43 @@ void timer_init(void) {
   irq_enable();
 }
 DECL_INIT(timer_init);
+
+
+
+void timer_dispatch()
+{
+  if(dispatch_timer)
+  {
+    uint32_t next = timer_dispatch_many();
+    timer_set(next);
+    dispatch_timer= false;
+  }
+}
+
+
+void irq_disable(void) {
+
+
+}
+void irq_enable(void) {
+
+
+}
+irqstatus_t irq_save(void) { return 0; }
+
+void irq_restore(irqstatus_t flag) {
+
+  
+}
+
+void irq_wait(void) {
+  extern void console_kick();
+  console_kick();
+  vTaskDelay(1);
+}
+void irq_poll(void) {
+  timer_dispatch();
+}
+
+void clear_active_irq(void) {}
+DECL_SHUTDOWN(clear_active_irq);
