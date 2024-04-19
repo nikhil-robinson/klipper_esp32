@@ -8,7 +8,7 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
-DECL_CONSTANT_STR("MCU", "linux");
+DECL_CONSTANT_STR("MCU", "esp32");
 
 
 void command_config_reset(uint32_t *args)
