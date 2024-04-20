@@ -7,6 +7,7 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_adc/adc_oneshot.h"
 #include <stdint.h> // uint32_t
+#include "driver/i2c_master.h"
 
  struct gpio_out {
   uint32_t pin;
@@ -51,8 +52,7 @@ void spi_transfer(struct spi_config config, uint8_t receive_data, uint8_t len,
                   uint8_t *data);
 
 struct i2c_config {
-  void *i2c;
-  uint8_t addr;
+  i2c_master_dev_handle_t handel;
 };
 
 struct i2c_config i2c_setup(uint32_t bus, uint32_t rate, uint8_t addr);
