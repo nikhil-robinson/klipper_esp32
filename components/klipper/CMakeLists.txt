@@ -34,6 +34,7 @@ idf_component_register(SRCS "klipper/src/adccmds.c"
                             "board/timer.c"
                             "board/internal.c"
                             "board/console.c"
+                            "board/hard_pwm.c"
                             "compile_time_request.c"
                     INCLUDE_DIRS "klipper/src/" "board/include"
                     REQUIRES driver esp_adc)

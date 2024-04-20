@@ -2,7 +2,7 @@
 #define __RP2040_GPIO_H
 
 #include "driver/gpio.h"
-#include "driver/mcpwm_prelude.h"
+#include "driver/ledc.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_adc/adc_oneshot.h"
@@ -27,10 +27,10 @@ void gpio_in_reset(struct gpio_in g, int8_t pull_up);
 uint8_t gpio_in_read(struct gpio_in g);
 
 struct gpio_pwm {
-  mcpwm_cmpr_handle_t comparator;
+  ledc_channel_t channel;
 };
-struct gpio_pwm gpio_pwm_setup(uint8_t pin, uint32_t cycle_time, uint8_t val);
-void gpio_pwm_write(struct gpio_pwm g, uint32_t val);
+struct gpio_pwm gpio_pwm_setup(uint32_t pin, uint32_t cycle_time, uint16_t val);
+void gpio_pwm_write(struct gpio_pwm g, uint16_t val);
 
 struct gpio_adc {
   adc_oneshot_unit_handle_t handle;
