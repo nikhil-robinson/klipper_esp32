@@ -118,7 +118,7 @@ DECL_COMMAND_FLAGS command_hd44780_send_cmds 0 hd44780_send_cmds oid=%c cmds=%*s
 DECL_COMMAND_FLAGS command_config_hd44780 0 config_hd44780 oid=%c rs_pin=%u e_pin=%u d4_pin=%u d5_pin=%u d6_pin=%u d7_pin=%u delay_ticks=%u
 _DECL_STATIC_STR Not an input pin
 _DECL_STATIC_STR Not an output pin
-DECL_ENUMERATION_RANGE pin GPIO_NUM_0 +0x00000000 +0x0000001E
+DECL_ENUMERATION_RANGE pin GPIO_NUM_0 +0x00000000 +0x000000FF
 _DECL_STATIC_STR Not a valid ADC pin
 DECL_ENUMERATION pin ADC_TEMPERATURE +0x000000FE
 DECL_CONSTANT ADC_MAX +0x00000FFF
@@ -129,8 +129,8 @@ _DECL_CALLLIST ctr_run_shutdownfuncs clear_active_irq
 DECL_COMMAND_FLAGS command_reset 0x01 reset
 _DECL_CALLLIST ctr_run_taskfuncs timer_task
 _DECL_STATIC_STR Rescheduled timer in the past
-DECL_CONSTANT CLOCK_FREQ +0x017D7840
-_DECL_CALLLIST ctr_run_initfuncs serial_init
+DECL_CONSTANT CLOCK_FREQ +0x000F4240
+_DECL_CALLLIST ctr_run_initfuncs console_setup
 _DECL_CALLLIST ctr_run_taskfuncs console_task
 DECL_CONSTANT RECEIVE_WINDOW +0x000000C0
 DECL_CONSTANT SERIAL_BAUD +0x0003D090

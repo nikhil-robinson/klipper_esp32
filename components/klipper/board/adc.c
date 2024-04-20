@@ -104,8 +104,6 @@ struct gpio_adc gpio_adc_setup(uint32_t pin) {
   return (struct gpio_adc){.handle = adc_handle};
 }
 
-enum { ADC_DUMMY = 0xff };
-static uint8_t last_analog_read = ADC_DUMMY;
 
 // Try to sample a value. Returns zero if sample ready, otherwise
 // returns the number of clock ticks the caller should wait before
@@ -118,12 +116,10 @@ uint32_t gpio_adc_sample(struct gpio_adc g) {
 uint16_t gpio_adc_read(struct gpio_adc g) {
   int adc_raw = 0;
   ESP_ERROR_CHECK(adc_oneshot_read(g.handle, g.chan, &adc_raw));
-  last_analog_read = ADC_DUMMY;
   return (uint16_t)adc_raw;
 }
 
 // Cancel a sample that may have been started with gpio_adc_sample()
 void gpio_adc_cancel_sample(struct gpio_adc g) {
-  if (last_analog_read == g.chan)
-    last_analog_read = ADC_DUMMY;
+  
 }
