@@ -1,0 +1,56 @@
+menu "Klipper Firmware Configuration"
+    config MCU
+        string "MCU NAME"
+        default "esp32"
+    config CLOCK_FREQ
+        int "Timer frequency"
+        default 1000000
+    config HAVE_GPIO
+        bool "Board support GPIO"
+    config HAVE_GPIO_ADC
+        bool "Board support ADC"
+    config HAVE_GPIO_SPI
+        bool "Board support SPI"
+    config HAVE_GPIO_SDIO
+        bool "Board support SDIO"
+    config HAVE_GPIO_I2C
+        bool "Board support I2C"
+    config HAVE_GPIO_HARD_PWM
+        bool "Board support PWM"
+    config HAVE_STRICT_TIMING
+        bool "Board needs STRICT timing"
+    config HAVE_CHIPID
+        bool "Board have chip-id"
+    config HAVE_STEPPER_BOTH_EDGE
+        bool "Board support stepper both edge"
+    config HAVE_BOOTLOADER_REQUEST
+        bool "Board have bootloader request"
+    config HAVE_LIMITED_CODE_SIZE
+        bool "Board have limited code size"
+    config INLINE_STEPPER_HACK
+        bool "Enables gcc to inline stepper_event() into the main timer irq handler"
+    config SERIAL
+        bool "Enable serial"
+    config SERIAL_BAUD
+        int "Baud rate for serial port"
+        default 250000
+        help
+            Specify the baud rate of the serial port. This should be set
+            to 250000. Read the FAQ before changing this value.
+    config WANT_GPIO_BITBANGING
+        bool "Support GPIO bit-banging devices"
+    config WANT_DISPLAYS
+        bool "Support LCD devices"
+    config WANT_SENSORS
+        bool "Support external sensor devices"
+    config WANT_LIS2DW
+        bool "Support lis2dw 3-axis accelerometer"
+    config WANT_LDC1612
+        bool "Support ldc1612 eddy current sensor"
+    config WANT_SOFTWARE_I2C
+        bool "Support software based I2C bit-banging"
+    config WANT_SOFTWARE_SPI
+        bool "Support software based SPI bit-banging"
+
+
+endmenu

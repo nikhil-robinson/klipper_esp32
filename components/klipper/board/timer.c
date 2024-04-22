@@ -4,19 +4,21 @@
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
-#include "command.h"           // DECL_SHUTDOWN
 #include "board/irq.h"       // irq_disable
 #include "board/misc.h"      // timer_read_time
 #include "board/timer_irq.h" // timer_dispatch_many
-#include "sched.h"             // DECL_INIT
-#include <stdio.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
+#include "command.h"         // DECL_SHUTDOWN
 #include "driver/gptimer.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+#include "sched.h" // DECL_INIT
+#include <stdio.h>
 
 static gptimer_handle_t gptimer = NULL;
+
+volatile bool dispatch_timer = false;
 
 /****************************************************************
  * Low level timer code
@@ -29,7 +31,7 @@ uint32_t timer_read_time(void) {
   return count;
 }
 
-static inline void timer_set(uint32_t next) {
+void timer_set(uint32_t next) {
   gptimer_alarm_config_t alarm_config = {
       .alarm_count = next, // period = 1s
   };
@@ -44,17 +46,13 @@ void timer_kick(void) { timer_set(timer_read_time() + 50); }
  * Setup and irqs
  ****************************************************************/
 
+static bool IRAM_ATTR example_timer_on_alarm_cb_v1(
+    gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata,
+    void *user_data) {
 
-static bool IRAM_ATTR example_timer_on_alarm_cb_v1(gptimer_handle_t timer,
-                                        const gptimer_alarm_event_data_t *edata,
-                                        void *user_data) {
-  irq_disable();
   BaseType_t high_task_awoken = pdFALSE;
   gptimer_stop(timer);
-
-  uint32_t next = timer_dispatch_many();
-  timer_set(next);
-  irq_enable();
+  dispatch_timer = true;
   return (high_task_awoken == pdTRUE);
 }
 
@@ -77,3 +75,43 @@ void timer_init(void) {
   irq_enable();
 }
 DECL_INIT(timer_init);
+
+
+
+void timer_dispatch()
+{
+  if(dispatch_timer)
+  {
+    uint32_t next = timer_dispatch_many();
+    timer_set(next);
+    dispatch_timer= false;
+  }
+}
+
+
+void irq_disable(void) {
+
+
+}
+void irq_enable(void) {
+
+
+}
+irqstatus_t irq_save(void) { return 0; }
+
+void irq_restore(irqstatus_t flag) {
+
+  
+}
+
+void irq_wait(void) {
+  extern void console_kick();
+  console_kick();
+  vTaskDelay(1);
+}
+void irq_poll(void) {
+  timer_dispatch();
+}
+
+void clear_active_irq(void) {}
+DECL_SHUTDOWN(clear_active_irq);

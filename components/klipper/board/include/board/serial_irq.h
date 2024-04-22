@@ -3,6 +3,7 @@
 
 #include <stdint.h> // uint32_t
 
+
 // callback provided by board specific code
 void serial_enable_tx_irq(void);
 
