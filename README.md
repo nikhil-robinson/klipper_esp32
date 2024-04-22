@@ -20,7 +20,7 @@ Before using Klipper_ESP32, ensure you have the following prerequisites installe
 1. **Clone the Repository:**
 
     ```bash
-    git clone [https://github.com/your-username/klipper-esp32](https://github.com/nikhil-robinson/klipper_esp32)
+    git clone https://github.com/nikhil-robinson/klipper_esp32
     ```
 
 2. **Navigate to the Project Directory:**
@@ -63,7 +63,7 @@ Contributions to Klipper_ESP32 are welcome! If you have suggestions for improvem
 
 ## Licensing
 
-Klipper_ESP32 is licensed under the GNU General Public License v3.0 due to the upstream license of the Klipper firmware. Please see [LICENSE.txt](LICENSE.txt) for more information.
+Please refer to the individual source files within the klipper _esp32 for detailed licensing information.
 
 ## Acknowledgements
 
