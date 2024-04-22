@@ -20,7 +20,7 @@ Before using Klipper_ESP32, ensure you have the following prerequisites installe
 1. **Clone the Repository:**
 
     ```bash
-    git clone https://github.com/nikhil-robinson/klipper_esp32
+    git clone --recursive https://github.com/nikhil-robinson/klipper_esp32
     ```
 
 2. **Navigate to the Project Directory:**
