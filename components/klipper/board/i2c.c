@@ -61,16 +61,16 @@ struct i2c_config i2c_setup(uint32_t bus, uint32_t rate, uint8_t addr) {
   i2c_master_dev_handle_t dev_handle;
   ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_cfg, &dev_handle));
 
-  return (struct i2c_config){.handel = dev_handle};
+  return (struct i2c_config){.handle = dev_handle};
 }
 
 
 
 void i2c_write(struct i2c_config config, uint8_t write_len, uint8_t *write) {
-  i2c_master_transmit(config.handel, write, write_len, -1);
+  i2c_master_transmit(config.handle, write, write_len, -1);
 }
 
 void i2c_read(struct i2c_config config, uint8_t reg_len, uint8_t *reg,
               uint8_t read_len, uint8_t *read) {
-  i2c_master_transmit_receive(config.handel, reg, reg_len, read, read_len, -1);
+  i2c_master_transmit_receive(config.handle, reg, reg_len, read, read_len, -1);
 }
