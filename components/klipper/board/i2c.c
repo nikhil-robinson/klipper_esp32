@@ -1,8 +1,12 @@
-// I2C functions for rp2040
+// I2C functions for esp32
 //
-// Copyright (C) 2022  Lasse Dalegaard <dalegaard@gmail.com>
+// Copyright (C) 2024  Nikhil Robinson <nikhil@techprogeny.com>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
+
+// Unless required by applicable law or agreed to in writing, this
+// software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied.
 
 #include "board/gpio.h"     // i2c_setup, i2c_read, i2c_write
 #include "board/internal.h" // pclock, gpio_peripheral

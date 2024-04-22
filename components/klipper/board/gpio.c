@@ -1,8 +1,12 @@
-// GPIO functions on rp2040
+// GPIO functions on esp32
 //
-// Copyright (C) 2021  Kevin O'Connor <kevin@koconnor.net>
+// Copyright (C) 2024  Nikhil Robinson <nikhil@techprogeny.com>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
+
+// Unless required by applicable law or agreed to in writing, this
+// software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied.
 
 #include "board/gpio.h" // gpio_out_setup
 #include "board/irq.h"  // irq_save

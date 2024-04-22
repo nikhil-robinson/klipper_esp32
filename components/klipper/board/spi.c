@@ -1,3 +1,15 @@
+// Spi control for esp32
+//
+// Copyright (C) 2024  Nikhil Robinson <nikhil@techprogeny.com>
+//
+// This file may be distributed under the terms of the GNU GPLv3 license.
+
+// Unless required by applicable law or agreed to in writing, this
+// software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied.
+
+
+
 #include "board/gpio.h"     // spi_setup, spi_prepare, spi_transfer
 #include "board/internal.h" // pclock, gpio_peripheral
 #include "command.h"        // shutdown"

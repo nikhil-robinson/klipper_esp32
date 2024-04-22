@@ -1,3 +1,14 @@
+// Hardware PWM control
+//
+// Copyright (C) 2024  Nikhil Robinson <nikhil@techprogeny.com>
+//
+// This file may be distributed under the terms of the GNU GPLv3 license.
+
+// Unless required by applicable law or agreed to in writing, this
+// software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied.
+
+
 #include <stdio.h>
 #include <string.h>
 #include "board/gpio.h" // struct gpio_pwm

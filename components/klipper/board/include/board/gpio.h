@@ -1,5 +1,5 @@
-#ifndef __RP2040_GPIO_H
-#define __RP2040_GPIO_H
+#ifndef __ESP32_GPIO_H
+#define __ESP32_GPIO_H
 
 #include "driver/gpio.h"
 #include "driver/ledc.h"
