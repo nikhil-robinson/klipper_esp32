@@ -64,7 +64,6 @@ DECL_COMMAND_FLAGS command_queue_step 0 queue_step oid=%c interval=%u count=%hu 
 _DECL_STATIC_STR Invalid count parameter
 DECL_COMMAND_FLAGS command_config_stepper 0 config_stepper oid=%c step_pin=%c dir_pin=%c invert_step=%c step_pulse_ticks=%u
 _DECL_STATIC_STR Stepper too far in past
-DECL_CONSTANT STEPPER_BOTH_EDGE +0x00000001
 DECL_COMMAND_FLAGS command_endstop_query_state 0 endstop_query_state oid=%c
 _DECL_ENCODER endstop_state oid=%c homing=%c next_clock=%u pin_value=%c
 DECL_COMMAND_FLAGS command_endstop_home 0 endstop_home oid=%c clock=%u sample_ticks=%u sample_count=%c rest_ticks=%u pin_value=%c trsync_oid=%c trigger_reason=%c
@@ -83,6 +82,30 @@ _DECL_ENCODER analog_in_state oid=%c next_clock=%u value=%hu
 DECL_COMMAND_FLAGS command_query_analog_in 0 query_analog_in oid=%c clock=%u sample_ticks=%u sample_count=%c rest_ticks=%u min_value=%hu max_value=%hu range_check_count=%c
 DECL_COMMAND_FLAGS command_config_analog_in 0 config_analog_in oid=%c pin=%u
 _DECL_STATIC_STR ADC out of range
+_DECL_CALLLIST ctr_run_shutdownfuncs spidev_shutdown
+DECL_COMMAND_FLAGS command_config_spi_shutdown 0 config_spi_shutdown oid=%c spi_oid=%c shutdown_msg=%*s
+DECL_COMMAND_FLAGS command_spi_send 0 spi_send oid=%c data=%*s
+DECL_COMMAND_FLAGS command_spi_transfer 0 spi_transfer oid=%c data=%*s
+_DECL_ENCODER spi_transfer_response oid=%c response=%*s
+_DECL_STATIC_STR Invalid spi config
+DECL_COMMAND_FLAGS command_spi_set_bus 0 spi_set_bus oid=%c spi_bus=%u mode=%u rate=%u
+_DECL_STATIC_STR Invalid spi config
+DECL_COMMAND_FLAGS command_config_spi_without_cs 0 config_spi_without_cs oid=%c
+DECL_COMMAND_FLAGS command_config_spi 0 config_spi oid=%c pin=%u cs_active_high=%c
+DECL_COMMAND_FLAGS command_i2c_modify_bits 0 i2c_modify_bits oid=%c reg=%*s clear_set_bits=%*s
+_DECL_STATIC_STR i2c_modify_bits: Odd number of bits!
+DECL_COMMAND_FLAGS command_i2c_read 0 i2c_read oid=%c reg=%*s read_len=%u
+_DECL_ENCODER i2c_read_response oid=%c response=%*s
+DECL_COMMAND_FLAGS command_i2c_write 0 i2c_write oid=%c data=%*s
+DECL_COMMAND_FLAGS command_i2c_set_bus 0 i2c_set_bus oid=%c i2c_bus=%u rate=%u address=%u
+DECL_COMMAND_FLAGS command_config_i2c 0 config_i2c oid=%c
+DECL_COMMAND_FLAGS command_set_pwm_out 0 set_pwm_out pin=%u cycle_ticks=%u value=%hu
+_DECL_CALLLIST ctr_run_shutdownfuncs pwm_shutdown
+DECL_COMMAND_FLAGS command_queue_pwm_out 0 queue_pwm_out oid=%c clock=%u value=%hu
+_DECL_STATIC_STR Scheduled pwm event will exceed max_duration
+DECL_COMMAND_FLAGS command_config_pwm_out 0 config_pwm_out oid=%c pin=%u cycle_ticks=%u value=%hu default_value=%hu max_duration=%u
+_DECL_STATIC_STR Scheduled pwm event will exceed max_duration
+_DECL_STATIC_STR Missed scheduling of next hard pwm event
 _DECL_CALLLIST ctr_run_taskfuncs buttons_task
 _DECL_ENCODER buttons_state oid=%c ack_count=%c state=%*s
 DECL_COMMAND_FLAGS command_buttons_ack 0 buttons_ack oid=%c count=%c
@@ -116,21 +139,82 @@ _DECL_CALLLIST ctr_run_shutdownfuncs hd44780_shutdown
 DECL_COMMAND_FLAGS command_hd44780_send_data 0 hd44780_send_data oid=%c data=%*s
 DECL_COMMAND_FLAGS command_hd44780_send_cmds 0 hd44780_send_cmds oid=%c cmds=%*s
 DECL_COMMAND_FLAGS command_config_hd44780 0 config_hd44780 oid=%c rs_pin=%u e_pin=%u d4_pin=%u d5_pin=%u d6_pin=%u d7_pin=%u delay_ticks=%u
-_DECL_STATIC_STR Not an input pin
-_DECL_STATIC_STR Not an output pin
-DECL_ENUMERATION_RANGE pin GPIO_NUM_0 +0x00000000 +0x000000FF
-_DECL_STATIC_STR Not a valid ADC pin
-DECL_ENUMERATION pin ADC_TEMPERATURE +0x000000FE
-DECL_CONSTANT ADC_MAX +0x00000FFF
+DECL_COMMAND_FLAGS command_spi_set_software_bus 0 spi_set_software_bus oid=%c miso_pin=%u mosi_pin=%u sclk_pin=%u mode=%u rate=%u
+_DECL_STATIC_STR Invalid spi config
+_DECL_STATIC_STR soft_i2c NACK
+DECL_COMMAND_FLAGS command_i2c_set_software_bus 0 i2c_set_software_bus oid=%c scl_pin=%u sda_pin=%u rate=%u address=%u
+_DECL_CALLLIST ctr_run_taskfuncs thermocouple_task
+_DECL_STATIC_STR Thermocouple reader fault
+_DECL_ENCODER thermocouple_result oid=%c next_clock=%u value=%u fault=%c
+DECL_COMMAND_FLAGS command_query_thermocouple 0 query_thermocouple oid=%c clock=%u rest_ticks=%u min_value=%u max_value=%u max_invalid_count=%c
+DECL_COMMAND_FLAGS command_config_thermocouple 0 config_thermocouple oid=%c spi_oid=%c thermocouple_type=%c
+_DECL_STATIC_STR Invalid thermocouple chip type
+DECL_ENUMERATION thermocouple_type MAX6675 +0x00000003
+DECL_ENUMERATION thermocouple_type MAX31865 +0x00000002
+DECL_ENUMERATION thermocouple_type MAX31856 +0x00000001
+DECL_ENUMERATION thermocouple_type MAX31855 +0x00000000
+_DECL_CALLLIST ctr_run_taskfuncs adxl345_task
+DECL_COMMAND_FLAGS command_query_adxl345_status 0 query_adxl345_status oid=%c
+DECL_COMMAND_FLAGS command_query_adxl345 0 query_adxl345 oid=%c rest_ticks=%u
+DECL_COMMAND_FLAGS command_config_adxl345 0 config_adxl345 oid=%c spi_oid=%c
+_DECL_CALLLIST ctr_run_taskfuncs spi_angle_task
+DECL_COMMAND_FLAGS command_spi_angle_transfer 0 spi_angle_transfer oid=%c data=%*s
+_DECL_ENCODER spi_angle_transfer_response oid=%c clock=%u response=%*s
+DECL_COMMAND_FLAGS command_query_spi_angle 0 query_spi_angle oid=%c clock=%u rest_ticks=%u time_shift=%c
+DECL_COMMAND_FLAGS command_config_spi_angle 0 config_spi_angle oid=%c spi_oid=%c spi_angle_type=%c
+_DECL_STATIC_STR angle sensor requires cs pin
+_DECL_STATIC_STR Invalid spi_angle chip type
+DECL_ENUMERATION spi_angle_type tle5012b +0x00000002
+DECL_ENUMERATION spi_angle_type as5047d +0x00000001
+DECL_ENUMERATION spi_angle_type a1333 +0x00000000
+_DECL_CALLLIST ctr_run_taskfuncs mpu9250_task
+DECL_COMMAND_FLAGS command_query_mpu9250_status 0 query_mpu9250_status oid=%c
+DECL_COMMAND_FLAGS command_query_mpu9250 0 query_mpu9250 oid=%c rest_ticks=%u
+DECL_COMMAND_FLAGS command_config_mpu9250 0 config_mpu9250 oid=%c i2c_oid=%c
+_DECL_CALLLIST ctr_run_taskfuncs lis2dw_task
+DECL_COMMAND_FLAGS command_query_lis2dw_status 0 query_lis2dw_status oid=%c
+DECL_COMMAND_FLAGS command_query_lis2dw 0 query_lis2dw oid=%c rest_ticks=%u
+DECL_COMMAND_FLAGS command_config_lis2dw 0 config_lis2dw oid=%c spi_oid=%c
+_DECL_CALLLIST ctr_run_taskfuncs ldc1612_task
+DECL_COMMAND_FLAGS command_query_ldc1612_status 0 query_ldc1612_status oid=%c
+DECL_COMMAND_FLAGS command_query_ldc1612 0 query_ldc1612 oid=%c rest_ticks=%u
+DECL_COMMAND_FLAGS command_query_ldc1612_home_state 0 query_ldc1612_home_state oid=%c
+_DECL_ENCODER ldc1612_home_state oid=%c homing=%c trigger_clock=%u
+DECL_COMMAND_FLAGS command_ldc1612_setup_home 0 ldc1612_setup_home oid=%c clock=%u threshold=%u trsync_oid=%c trigger_reason=%c
+DECL_COMMAND_FLAGS command_config_ldc1612 0 config_ldc1612 oid=%c i2c_oid=%c
+_DECL_ENCODER sensor_bulk_status oid=%c clock=%u query_ticks=%u next_sequence=%hu buffered=%u possible_overflows=%hu
+_DECL_ENCODER sensor_bulk_data oid=%c sequence=%hu data=%*s
+DECL_COMMAND_FLAGS command_config_reset 0x01 config_reset
+_DECL_STATIC_STR config_reset only available when shutdown
+DECL_CONSTANT_STR MCU linux
 _DECL_CALLLIST ctr_run_initfuncs timer_init
-DECL_ARMCM_IRQ ResetHandler -0x0000000F
-DECL_CONSTANT_STR MCU esp32
-_DECL_CALLLIST ctr_run_shutdownfuncs clear_active_irq
-DECL_COMMAND_FLAGS command_reset 0x01 reset
-_DECL_CALLLIST ctr_run_taskfuncs timer_task
 _DECL_STATIC_STR Rescheduled timer in the past
-DECL_CONSTANT CLOCK_FREQ +0x000F4240
-_DECL_CALLLIST ctr_run_initfuncs console_setup
+DECL_CONSTANT CLOCK_FREQ +0x02FAF080
 _DECL_CALLLIST ctr_run_taskfuncs console_task
-DECL_CONSTANT RECEIVE_WINDOW +0x000000C0
-DECL_CONSTANT SERIAL_BAUD +0x0003D090
+_DECL_STATIC_STR Force shutdown command
+_DECL_STATIC_STR Unable to write to spi
+_DECL_STATIC_STR Unable to issue spi ioctl
+_DECL_STATIC_STR Unable to set SPI mode
+_DECL_STATIC_STR Unable to set SPI speed
+_DECL_STATIC_STR Unable to set non-blocking on spi device
+_DECL_STATIC_STR Unable to open spi device
+_DECL_STATIC_STR Too many spi devices
+DECL_ENUMERATION spi_bus SPI3_HOST +0x00000002
+DECL_ENUMERATION spi_bus SPI2_HOST +0x00000001
+DECL_ENUMERATION spi_bus SPI1_HOST +0x00000000
+_DECL_STATIC_STR Error on analog read
+_DECL_STATIC_STR Unable to open adc device
+DECL_CONSTANT ADC_MAX +0x00000FFF
+_DECL_STATIC_STR Unable to config pwm device
+DECL_CONSTANT PWM_MAX +0x00002000
+_DECL_STATIC_STR Unable to read i2c device
+_DECL_STATIC_STR Unable write i2c device
+_DECL_STATIC_STR Unable to open i2c device
+DECL_CONSTANT_STR BUS_PINS_i2c1 GPIO_NUM_48,GPIO_NUM_47
+DECL_CONSTANT_STR BUS_PINS_i2c0 GPIO_NUM_8,GPIO_NUM_9
+DECL_ENUMERATION_RANGE i2c_bus I2C_NUM_0 +0x00000000 +0x00000002
+_DECL_STATIC_STR Unable to open in GPIO chip line
+_DECL_STATIC_STR Unable to open out GPIO chip line
+_DECL_STATIC_STR Unable to open GPIO chip device
+_DECL_STATIC_STR GPIO chip device not found
+DECL_ENUMERATION_RANGE pin GPIO_NUM_0 +0x00000000 +0x000000FF

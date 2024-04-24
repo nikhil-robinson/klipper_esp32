@@ -21,6 +21,7 @@ DECL_COMMAND_FLAGS(command_config_reset, HF_IN_SHUTDOWN, "config_reset");
 
 void main_task(void *pvparameters)
 {
+    console_setup();
     for (;;)
     {
         sched_main();
