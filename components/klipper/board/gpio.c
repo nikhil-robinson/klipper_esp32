@@ -77,7 +77,7 @@ struct gpio_in gpio_in_setup(uint8_t pin, int8_t pull_up) {
 }
 
 void gpio_in_reset(struct gpio_in g, int8_t pull_up) {
-  gpio_out_setup(g.pin,pull_up);
+  gpio_in_setup(g.pin,pull_up);
 }
 
 uint8_t gpio_in_read(struct gpio_in g) { return gpio_ll_get_level(hw,g.pin); }
