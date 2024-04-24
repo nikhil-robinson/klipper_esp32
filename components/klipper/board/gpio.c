@@ -34,27 +34,31 @@ gpio_dev_t *hw = &GPIO;
  ****************************************************************/
 
 struct gpio_out gpio_out_setup(uint32_t gpio_num, uint32_t val) {
-  struct gpio_out g = {.pin = gpio_num,
-                        .state =val};
-  gpio_ll_output_enable(hw, g.pin);
+
+  static struct gpio_line gpio_line;
+  gpio_line.pin =gpio_num;
+  gpio_line.state =!!val;
+  struct gpio_out g = { .line = &gpio_line };
+  gpio_ll_output_enable(hw, gpio_num);
   gpio_out_write(g, val);
   return g;
 }
 
 void gpio_out_reset(struct gpio_out g, uint32_t val) {
-  gpio_out_setup(g.pin,val);
+  gpio_out_setup(g.line->pin,val);
 }
 
 void gpio_out_toggle_noirq(struct gpio_out g) {
 
-  
+  gpio_out_write(g,!g.line->state);
 
 }
 
 void gpio_out_toggle(struct gpio_out g) { gpio_out_toggle_noirq(g); }
 
 void gpio_out_write(struct gpio_out g, uint32_t val) {
-  gpio_ll_set_level(hw,g.pin, val);
+  gpio_ll_set_level(hw,g.line->pin, val);
+  g.line->state = !!val;
 }
 
 struct gpio_in gpio_in_setup(uint8_t pin, int8_t pull_up) {

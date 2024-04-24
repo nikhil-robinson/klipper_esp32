@@ -10,11 +10,16 @@
 #include "driver/i2c_master.h"
 #include "driver/spi_master.h"
 
- struct gpio_out {
+
+struct gpio_line {
   uint32_t pin;
   uint32_t state;
-  
 };
+struct gpio_out {
+    struct gpio_line* line;
+};
+
+
 struct gpio_out gpio_out_setup(uint32_t gpio_num, uint32_t val);
 void gpio_out_reset(struct gpio_out g, uint32_t val);
 void gpio_out_toggle_noirq(struct gpio_out g);
