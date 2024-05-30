@@ -37,6 +37,18 @@ idf_component_register(SRCS "klipper/src/adccmds.c"
                             "board/hard_pwm.c"
                             "board/i2c.c"
                             "board/spi.c"
-                            "compile_time_request.c"
                     INCLUDE_DIRS "klipper/src/" "board/include"
                     REQUIRES driver esp_adc)
+
+
+add_custom_command(
+        OUTPUT compile_time_request.c
+        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/klipper/
+        COMMAND python3 ./scripts/buildcommands.py -d ${CMAKE_CURRENT_SOURCE_DIR}/klipper.dict ${CMAKE_CURRENT_SOURCE_DIR}/compile_time_request.txt ${CMAKE_CURRENT_SOURCE_DIR}/compile_time_request.c
+        DEPENDS compile_time_request.txt
+        VERBATIM)
+
+# Define custom target
+add_custom_target(compile_time_request ALL DEPENDS compile_time_request.c)
+add_dependencies(${COMPONENT_LIB} compile_time_request)
+target_sources(${COMPONENT_TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/compile_time_request.c)

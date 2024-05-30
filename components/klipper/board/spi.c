@@ -8,8 +8,6 @@
 // software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 // CONDITIONS OF ANY KIND, either express or implied.
 
-
-
 #include "board/gpio.h"     // spi_setup, spi_prepare, spi_transfer
 #include "board/internal.h" // pclock, gpio_peripheral
 #include "command.h"        // shutdown"
@@ -81,7 +79,7 @@ void spi_write(struct spi_config config, uint8_t len, uint8_t *data) {
 
 void spi_read(struct spi_config config, uint8_t len, uint8_t *data) {
   spi_transaction_t t = {
-      .rxlength = len *8,
+      .rxlength = len * 8,
       .flags = SPI_TRANS_USE_RXDATA,
       .user = 0,
   };

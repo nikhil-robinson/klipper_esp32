@@ -18,8 +18,8 @@
 #include "esp_log.h"
 #include "sched.h" // sched_wake_task
 #include "sdkconfig.h"
-#include <errno.h> // errno
-#include <stdio.h> // fprintf
+#include <errno.h>  // errno
+#include <stdio.h>  // fprintf
 #include <string.h> // memmove
 
 // Report 'errno' in a message written to stderr

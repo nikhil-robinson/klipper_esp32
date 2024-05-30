@@ -14,9 +14,8 @@
 #include "command.h"        // shutdown
 #include "driver/i2c_master.h"
 #include "sched.h" // sched_shutdown
-#include "soc/soc_caps.h"
 #include "soc/clk_tree_defs.h"
-
+#include "soc/soc_caps.h"
 
 DECL_ENUMERATION_RANGE("i2c_bus", "I2C_NUM_0", 0, 2);
 DECL_CONSTANT_STR("BUS_PINS_i2c0", "GPIO_NUM_8,GPIO_NUM_9");
@@ -63,8 +62,6 @@ struct i2c_config i2c_setup(uint32_t bus, uint32_t rate, uint8_t addr) {
 
   return (struct i2c_config){.handle = dev_handle};
 }
-
-
 
 void i2c_write(struct i2c_config config, uint8_t write_len, uint8_t *write) {
   i2c_master_transmit(config.handle, write, write_len, -1);
