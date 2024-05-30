@@ -41,14 +41,20 @@ idf_component_register(SRCS "klipper/src/adccmds.c"
                     REQUIRES driver esp_adc)
 
 
+# Add custom command to generate compile_time_request.c
 add_custom_command(
-        OUTPUT compile_time_request.c
-        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/klipper/
-        COMMAND python3 ./scripts/buildcommands.py -d ${CMAKE_CURRENT_SOURCE_DIR}/klipper.dict ${CMAKE_CURRENT_SOURCE_DIR}/compile_time_request.txt ${CMAKE_CURRENT_SOURCE_DIR}/compile_time_request.c
-        DEPENDS compile_time_request.txt
-        VERBATIM)
+    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/compile_time_request.c
+    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_SOURCE_DIR}/klipper/ python3 ./scripts/buildcommands.py -d ${CMAKE_CURRENT_SOURCE_DIR}/klipper.dict ${CMAKE_CURRENT_SOURCE_DIR}/compile_time_request.txt ${CMAKE_CURRENT_SOURCE_DIR}/compile_time_request.c
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/klipper.dict ${CMAKE_CURRENT_SOURCE_DIR}/compile_time_request.txt
+    COMMENT "Generating compile_time_request.c"
+    VERBATIM
+)
 
-# Define custom target
-add_custom_target(compile_time_request ALL DEPENDS compile_time_request.c)
-add_dependencies(${COMPONENT_LIB} compile_time_request)
+# Define custom target to ensure compile_time_request.c is generated
+add_custom_target(compile_time_request_target DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/compile_time_request.c)
+
+# Make sure the component library depends on the generated file
+add_dependencies(${COMPONENT_LIB} compile_time_request_target)
+
+# Add the generated file to the sources of the component target
 target_sources(${COMPONENT_TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/compile_time_request.c)
