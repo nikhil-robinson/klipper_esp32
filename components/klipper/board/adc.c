@@ -8,7 +8,6 @@
 // software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 // CONDITIONS OF ANY KIND, either express or implied.
 
-
 #include "board/gpio.h" // gpio_adc_setup
 #include "board/misc.h" // timer_from_us
 #include "command.h"    // shutdown
@@ -112,13 +111,10 @@ struct gpio_adc gpio_adc_setup(uint32_t pin) {
   return (struct gpio_adc){.handle = adc_handle};
 }
 
-
 // Try to sample a value. Returns zero if sample ready, otherwise
 // returns the number of clock ticks the caller should wait before
 // retrying this function.
-uint32_t gpio_adc_sample(struct gpio_adc g) {
-  return 0;
-}
+uint32_t gpio_adc_sample(struct gpio_adc g) { return 0; }
 
 // Read a value; use only after gpio_adc_sample() returns zero
 uint16_t gpio_adc_read(struct gpio_adc g) {
@@ -128,6 +124,4 @@ uint16_t gpio_adc_read(struct gpio_adc g) {
 }
 
 // Cancel a sample that may have been started with gpio_adc_sample()
-void gpio_adc_cancel_sample(struct gpio_adc g) {
-  
-}
+void gpio_adc_cancel_sample(struct gpio_adc g) {}

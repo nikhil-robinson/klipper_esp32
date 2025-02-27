@@ -80,42 +80,26 @@ void timer_init(void) {
 }
 DECL_INIT(timer_init);
 
-
-
-void timer_dispatch()
-{
-  if(dispatch_timer)
-  {
+void timer_dispatch() {
+  if (dispatch_timer) {
     uint32_t next = timer_dispatch_many();
     timer_set(next);
-    dispatch_timer= false;
+    dispatch_timer = false;
   }
 }
 
-
-void irq_disable(void) {
-
-
-}
-void irq_enable(void) {
-
-
-}
+void irq_disable(void) {}
+void irq_enable(void) {}
 irqstatus_t irq_save(void) { return 0; }
 
-void irq_restore(irqstatus_t flag) {
-
-  
-}
+void irq_restore(irqstatus_t flag) {}
 
 void irq_wait(void) {
   extern void console_kick();
   console_kick();
   vTaskDelay(1);
 }
-void irq_poll(void) {
-  timer_dispatch();
-}
+void irq_poll(void) { timer_dispatch(); }
 
 void clear_active_irq(void) {}
 DECL_SHUTDOWN(clear_active_irq);
