@@ -82,7 +82,7 @@
 #endif
 
 #ifndef CONFIG_INITIAL_PINS
-#define CONFIG_INITIAL_PINS 0
+#define CONFIG_INITIAL_PINS ""
 #endif
 
 #ifndef CONFIG_HAVE_GPIO
