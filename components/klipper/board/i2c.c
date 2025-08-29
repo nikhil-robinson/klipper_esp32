@@ -8,9 +8,9 @@
 // software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 // CONDITIONS OF ANY KIND, either express or implied.
 
-#include "board/gpio.h"     // i2c_setup, i2c_read, i2c_write
-#include "board/internal.h" // pclock, gpio_peripheral
-#include "board/misc.h"     // timer_is_before
+#include "gpio.h"     // i2c_setup, i2c_read, i2c_write
+#include "internal.h" // pclock, gpio_peripheral
+#include "misc.h"     // timer_is_before
 #include "command.h"        // shutdown
 #include "driver/i2c_master.h"
 #include "sched.h" // sched_shutdown

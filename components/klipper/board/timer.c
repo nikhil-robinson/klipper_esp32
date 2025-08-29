@@ -8,9 +8,9 @@
 // software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 // CONDITIONS OF ANY KIND, either express or implied.
 
-#include "board/irq.h"       // irq_disable
-#include "board/misc.h"      // timer_read_time
-#include "board/timer_irq.h" // timer_dispatch_many
+#include "irq.h"       // irq_disable
+#include "misc.h"      // timer_read_time
+#include "timer_irq.h" // timer_dispatch_many
 #include "command.h"         // DECL_SHUTDOWN
 #include "driver/gptimer.h"
 #include "esp_log.h"

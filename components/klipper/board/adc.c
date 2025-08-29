@@ -8,14 +8,15 @@
 // software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 // CONDITIONS OF ANY KIND, either express or implied.
 
-#include "board/gpio.h" // gpio_adc_setup
-#include "board/misc.h" // timer_from_us
+#include "gpio.h" // gpio_adc_setup
+#include "misc.h" // timer_from_us
 #include "command.h"    // shutdown
 #include "sched.h"      // sched_shutdown
 
 DECL_CONSTANT("ADC_MAX", 4095);
 
-typedef struct {
+typedef struct
+{
   adc_unit_t unit;
   adc_channel_t channel;
   gpio_num_t pin
@@ -76,39 +77,61 @@ static const adc_mapping_t adc_lookup[] = {
 // #define ADC_TEMPERATURE_PIN 0xfe
 // DECL_ENUMERATION("pin", "ADC_TEMPERATURE", ADC_TEMPERATURE_PIN);
 
-static adc_mapping_t *adc_serach(uint32_t pin) {
+static adc_mapping_t *adc_serach(uint32_t pin)
+{
 
-  for (size_t i = 0; i < (sizeof(adc_lookup) / sizeof((adc_lookup)[0])); i++) {
+  for (size_t i = 0; i < (sizeof(adc_lookup) / sizeof((adc_lookup)[0])); i++)
+  {
     adc_mapping_t *adc = &adc_lookup[pin];
-    if (adc->pin == pin) {
+    if (adc->pin == pin)
+    {
       return adc;
     }
   }
   return NULL;
 }
 
-struct gpio_adc gpio_adc_setup(uint32_t pin) {
+adc_oneshot_unit_handle_t adc_handles[2] = {NULL};
+
+struct gpio_adc gpio_adc_setup(uint32_t pin)
+{
   const adc_mapping_t *adc = adc_serach(pin);
-  if (adc == NULL) {
+  if (adc == NULL)
+  {
     shutdown("Not a valid ADC pin");
   }
 
-  adc_oneshot_unit_handle_t adc_handle;
+  // adc_oneshot_unit_handle_t adc_handle;
   adc_oneshot_unit_init_cfg_t init_config1 = {
       .unit_id = adc->unit,
   };
-  ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc_handle));
 
+  if (condition(adc_handles[adc->unit] == NULL))
+  {
+    esp_err_t ret = adc_oneshot_new_unit(&init_config1, &adc_handles[adc->unit]);
+    if (ret != ESP_OK)
+    {
+      report_errno("analog open", ret);
+      goto fail;
+    }
+  }
   //-------------ADC1 Config---------------//
   adc_oneshot_chan_cfg_t config = {
       .bitwidth = ADC_BITWIDTH_DEFAULT,
       .atten = ADC_ATTEN_DB_12,
   };
 
-  ESP_ERROR_CHECK(
-      adc_oneshot_config_channel(adc_handle, adc->channel, &config));
+  esp_err_t ret = adc_oneshot_config_channel(adc_handles[adc->unit], adc->channel, &config);
+  if (ret != ESP_OK)
+  {
+    report_errno("analog config", ret);
+    goto fail;
+  }
 
-  return (struct gpio_adc){.handle = adc_handle};
+  return (struct gpio_adc){.handle = adc_handles[adc->unit], .chan = adc->channel};
+
+fail:
+  shutdown("Failed to initialize ADC unit");
 }
 
 // Try to sample a value. Returns zero if sample ready, otherwise
@@ -117,9 +140,16 @@ struct gpio_adc gpio_adc_setup(uint32_t pin) {
 uint32_t gpio_adc_sample(struct gpio_adc g) { return 0; }
 
 // Read a value; use only after gpio_adc_sample() returns zero
-uint16_t gpio_adc_read(struct gpio_adc g) {
+uint16_t gpio_adc_read(struct gpio_adc g)
+{
   int adc_raw = 0;
-  ESP_ERROR_CHECK(adc_oneshot_read(g.handle, g.chan, &adc_raw));
+  esp_err_t ret = adc_oneshot_read(g.handle, g.chan, &adc_raw);
+  if (ret != ESP_OK)
+  {
+    report_errno("analog read", ret);
+    try_shutdown("Error on analog read");
+    return 0;
+  }
   return (uint16_t)adc_raw;
 }
 

@@ -8,8 +8,8 @@
 // software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 // CONDITIONS OF ANY KIND, either express or implied.
 
-#include "board/gpio.h"     // spi_setup, spi_prepare, spi_transfer
-#include "board/internal.h" // pclock, gpio_peripheral
+#include "gpio.h"     // spi_setup, spi_prepare, spi_transfer
+#include "internal.h" // pclock, gpio_peripheral
 #include "command.h"        // shutdown"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"

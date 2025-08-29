@@ -8,8 +8,8 @@
 // software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 // CONDITIONS OF ANY KIND, either express or implied.
 
-#include "board/gpio.h" // gpio_out_setup
-#include "board/irq.h"  // irq_save
+#include "gpio.h" // gpio_out_setup
+#include "irq.h"  // irq_save
 #include "command.h"    // shutdown
 #include "esp_log.h"
 #include "hal/gpio_ll.h"

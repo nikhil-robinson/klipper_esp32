@@ -1,8 +1,8 @@
 
 #include <string.h>
-#include "board/misc.h" // console_sendf
+#include "misc.h" // console_sendf
 #include "command.h" // DECL_CONSTANT
-#include "board/internal.h" // console_setup
+#include "internal.h" // console_setup
 #include "sched.h" // sched_main
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -32,6 +32,5 @@ void main_task(void *pvparameters)
 
 void app_main(void)
 {
-    xTaskCreatePinnedToCore(main_task, "main_task", 4096, NULL, 20, NULL,
-                              0);
+    xTaskCreatePinnedToCore(main_task, "main_task", 4096, NULL, 20, NULL,0);
 }

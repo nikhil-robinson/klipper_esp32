@@ -8,8 +8,8 @@
 // software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 // CONDITIONS OF ANY KIND, either express or implied.
 
-#include "board/gpio.h"     // struct gpio_pwm
-#include "board/internal.h" // NSECS_PER_TICK
+#include "gpio.h"     // struct gpio_pwm
+#include "internal.h" // NSECS_PER_TICK
 #include "command.h"        // shutdown
 #include "sched.h"          // sched_shutdown
 #include <stdio.h>
