@@ -12,6 +12,7 @@
 #include "misc.h" // timer_from_us
 #include "command.h"    // shutdown
 #include "sched.h"      // sched_shutdown
+#include "internal.h"   // try_shutdown, DECL_CONSTANT
 
 DECL_CONSTANT("ADC_MAX", 4095);
 
@@ -19,7 +20,7 @@ typedef struct
 {
   adc_unit_t unit;
   adc_channel_t channel;
-  gpio_num_t pin
+  gpio_num_t pin;
 } adc_mapping_t;
 
 static const adc_mapping_t adc_lookup[] = {
@@ -82,7 +83,7 @@ static adc_mapping_t *adc_serach(uint32_t pin)
 
   for (size_t i = 0; i < (sizeof(adc_lookup) / sizeof((adc_lookup)[0])); i++)
   {
-    adc_mapping_t *adc = &adc_lookup[pin];
+    adc_mapping_t *adc = &adc_lookup[i];
     if (adc->pin == pin)
     {
       return adc;
@@ -106,7 +107,7 @@ struct gpio_adc gpio_adc_setup(uint32_t pin)
       .unit_id = adc->unit,
   };
 
-  if (condition(adc_handles[adc->unit] == NULL))
+  if (adc_handles[adc->unit] == NULL)
   {
     esp_err_t ret = adc_oneshot_new_unit(&init_config1, &adc_handles[adc->unit]);
     if (ret != ESP_OK)

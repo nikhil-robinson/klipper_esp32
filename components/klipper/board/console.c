@@ -1,13 +1,33 @@
+// ESP32 Console Implementation with VFS support
+// Supports both UART and USB CDC based on configuration
+//
+// Based on Linux console.c from Klipper
+// Copyright (C) 2017-2021  Kevin O'Connor <kevin@koconnor.net>
+// ESP32 adaptation: Copyright (C) 2024
+//
+// This file may be distributed under the terms of the GNU GPLv3 license.
+
 #include <errno.h>
 #include <fcntl.h>
-#include <poll.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
+#include "config.h"
+
+#ifdef CONFIG_CONSOLE_UART
 #include "driver/uart.h"
 #include "esp_vfs_dev.h"
+#endif
+
+#ifdef CONFIG_CONSOLE_USB_CDC
+#include "esp_vfs_usb_serial_jtag.h"
+#include "driver/usb_serial_jtag.h"
+#endif
+
 #include "esp_vfs_console.h"
 #include "esp_log.h"
 
@@ -17,110 +37,206 @@
 #include "internal.h"
 #include "sched.h"
 
-#define CONSOLE_UART_NUM   UART_NUM_0
-#define CONSOLE_BAUD_RATE  115200
-#define CONSOLE_UART_TX_PIN  UART_PIN_NO_CHANGE
-#define CONSOLE_UART_RX_PIN  UART_PIN_NO_CHANGE
+static const char* TAG = "console";
 
-
-#define TAG "console_uart_vfs"
-
-// Pollfd like original code
-static struct pollfd main_pfd[1];
-#define MP_TTY_IDX 0
-
+// Console state
 static struct task_wake console_wake;
-static uint8_t receive_buf[4096];
+static uint8_t receive_buf[CONFIG_CONSOLE_RX_BUFFER_SIZE];
 static int receive_pos;
 
-// ===== Original helper =====
+/****************************************************************
+ * Utility Functions
+ ****************************************************************/
+
+// Report 'errno' in a message written to stderr
 void report_errno(char *where, int rc)
 {
     int e = errno;
     fprintf(stderr, "Got error %d in %s: (%d) %s\n", rc, where, e, strerror(e));
 }
 
-// ===== No-op on ESP, kept for API compatibility =====
-int set_non_blocking(int fd) { (void)fd; return 0; }
-int set_close_on_exec(int fd) { (void)fd; return 0; }
+// Set file descriptor to non-blocking mode
+int set_non_blocking(int fd)
+{
+    int flags = fcntl(fd, F_GETFL);
+    if (flags < 0) {
+        report_errno("fcntl getfl", flags);
+        return -1;
+    }
+    int ret = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if (ret < 0) {
+        report_errno("fcntl setfl", ret);
+        return -1;
+    }
+    return 0;
+}
 
-// ===== Return original buffer pointer =====
+// Set close-on-exec flag (no-op on ESP32, kept for API compatibility)
+int set_close_on_exec(int fd) 
+{ 
+    (void)fd; 
+    return 0; 
+}
+
+/****************************************************************
+ * Console Setup
+ ****************************************************************/
+
+#ifdef CONFIG_CONSOLE_UART
+static int setup_uart_console(void)
+{
+    ESP_LOGI(TAG, "Setting up UART console on UART%d (TX:%d, RX:%d, baud:%d)", 
+             CONFIG_UART_NUM, CONFIG_UART_TX_PIN, CONFIG_UART_RX_PIN, CONFIG_UART_BAUD_RATE);
+
+    // Configure UART
+    uart_config_t uart_config = {
+        .baud_rate = CONFIG_UART_BAUD_RATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_APB,
+    };
+
+    esp_err_t err;
+    
+    // Install UART driver
+    err = uart_driver_install(CONFIG_UART_NUM, CONFIG_UART_RX_BUFFER_SIZE, 
+                             CONFIG_UART_TX_BUFFER_SIZE, 0, NULL, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to install UART driver: %s", esp_err_to_name(err));
+        return -1;
+    }
+
+    // Configure UART parameters
+    err = uart_param_config(CONFIG_UART_NUM, &uart_config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure UART: %s", esp_err_to_name(err));
+        return -1;
+    }
+
+    // Set UART pins
+    err = uart_set_pin(CONFIG_UART_NUM, CONFIG_UART_TX_PIN, CONFIG_UART_RX_PIN, 
+                       CONFIG_UART_RTS_PIN, CONFIG_UART_CTS_PIN);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set UART pins: %s", esp_err_to_name(err));
+        return -1;
+    }
+
+    // Install VFS UART driver
+    esp_vfs_dev_uart_use_driver(CONFIG_UART_NUM);
+    
+    return 0;
+}
+#endif
+
+#ifdef CONFIG_CONSOLE_USB_CDC
+static int setup_usb_cdc_console(void)
+{
+    ESP_LOGI(TAG, "Setting up USB CDC console");
+
+    // Configure USB Serial JTAG
+    usb_serial_jtag_driver_config_t usb_serial_jtag_config = {
+        .rx_buffer_size = CONFIG_CONSOLE_RX_BUFFER_SIZE,
+        .tx_buffer_size = CONFIG_UART_TX_BUFFER_SIZE,
+    };
+
+    esp_err_t err;
+    
+    // Install USB Serial JTAG driver
+    err = usb_serial_jtag_driver_install(&usb_serial_jtag_config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to install USB Serial JTAG driver: %s", esp_err_to_name(err));
+        return -1;
+    }
+
+    // Tell VFS to use USB Serial JTAG driver
+    esp_vfs_usb_serial_jtag_use_driver();
+    
+    return 0;
+}
+#endif
+
+int console_setup(char *name)
+{
+    (void)name; // Not used on ESP32
+
+    int ret = -1;
+
+#ifdef CONFIG_CONSOLE_UART
+    ret = setup_uart_console();
+#elif defined(CONFIG_CONSOLE_USB_CDC)
+    ret = setup_usb_cdc_console();
+#else
+    ESP_LOGE(TAG, "No console interface configured");
+    return -1;
+#endif
+
+    if (ret != 0) {
+        return ret;
+    }
+
+    // Set stdin to non-blocking
+    ret = set_non_blocking(STDIN_FILENO);
+    if (ret != 0) {
+        ESP_LOGE(TAG, "Failed to set stdin non-blocking");
+        return ret;
+    }
+
+    receive_pos = 0;
+
+    ESP_LOGI(TAG, "Console setup complete");
+    return 0;
+}
+
+/****************************************************************
+ * Console Operation
+ ****************************************************************/
+
+// Return pointer to receive buffer
 void *console_receive_buffer(void)
 {
     return receive_buf;
 }
 
-// ===== Setup UART as VFS console =====
-int console_setup(char *name)
-{
-    (void)name; // not used on ESP
-
-    // Install UART driver
-    uart_config_t uart_config = {
-        .baud_rate = CONSOLE_BAUD_RATE,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-    };
-    esp_err_t err;
-    err = uart_driver_install(CONSOLE_UART_NUM, 256, 0, 0, NULL, 0);
-    if (err != ESP_OK) {
-        report_errno("uart_driver_install", err);
-        return -1;
-    }
-    uart_param_config(CONSOLE_UART_NUM, &uart_config);
-    uart_set_pin(CONSOLE_UART_NUM, CONSOLE_UART_TX_PIN, CONSOLE_UART_RX_PIN,
-                 UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-
-    // Use VFS layer so read/write/printf work normally
-    esp_vfs_dev_uart_use_driver(CONSOLE_UART_NUM);
-    esp_vfs_console_register(CONSOLE_UART_NUM);
-
-    // Set stdin/stdout to non-blocking
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
-
-    // Prepare pollfd for console_sleep()
-    main_pfd[MP_TTY_IDX].fd = STDIN_FILENO;
-    main_pfd[MP_TTY_IDX].events = POLLIN;
-
-    receive_pos = 0;
-    return 0;
-}
-
-// ===== Task to process UART input =====
+// Process incoming console data
 void console_task(void)
 {
     if (!sched_check_wake(&console_wake))
         return;
 
-    // Read available bytes from stdin
+    // Read available data from console
     int ret = read(STDIN_FILENO, &receive_buf[receive_pos],
                    sizeof(receive_buf) - receive_pos);
+    
     if (ret < 0) {
-        if (errno == EWOULDBLOCK || errno == EAGAIN)
-            return;
-        report_errno("read", ret);
+        if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            return; // No data available
+        }
+        report_errno("console read", ret);
         return;
     }
-    if (ret == 0)
-        return;
+    
+    if (ret == 0) {
+        return; // No data read
+    }
 
-    // FORCE_SHUTDOWN detection
-    if (ret == 15 && receive_buf[receive_pos+14] == '\n' &&
+    // Check for force shutdown command
+    if (ret == 15 && receive_buf[receive_pos + 14] == '\n' &&
         memcmp(&receive_buf[receive_pos], "FORCE_SHUTDOWN\n", 15) == 0) {
         shutdown("Force shutdown command");
+        return;
     }
 
-    // Process commands
+    // Process received data for commands
     int len = receive_pos + ret;
     uint_fast8_t pop_count;
     uint_fast8_t msglen = len > MESSAGE_MAX ? MESSAGE_MAX : len;
+    
     ret = command_find_and_dispatch(receive_buf, msglen, &pop_count);
     if (ret) {
         len -= pop_count;
-        if (len) {
+        if (len > 0) {
             memmove(receive_buf, &receive_buf[pop_count], len);
             sched_wake_task(&console_wake);
         }
@@ -129,26 +245,26 @@ void console_task(void)
 }
 DECL_TASK(console_task);
 
-// ===== Send encoded message =====
+// Encode and transmit a response message
 void console_sendf(const struct command_encoder *ce, va_list args)
 {
     uint8_t buf[MESSAGE_MAX];
     uint_fast8_t msglen = command_encode_and_frame(buf, ce, args);
 
     int ret = write(STDOUT_FILENO, buf, msglen);
-    if (ret < 0)
-        report_errno("write", ret);
+    if (ret < 0) {
+        report_errno("console write", ret);
+    }
 }
 
-// ===== Wait for UART input =====
-void console_sleep(sigset_t *sigset)
+// Sleep until console input is available
+void console_sleep(void)
 {
-    (void)sigset; // signals unused in ESP
-
-    int ret = poll(main_pfd, 1, -1); // block until data
-    if (ret > 0 && (main_pfd[MP_TTY_IDX].revents & POLLIN)) {
-        sched_wake_task(&console_wake);
-    } else if (ret < 0 && errno != EINTR) {
-        report_errno("poll", ret);
-    }
+    // On ESP32 with VFS, we don't need complex polling
+    // Just yield to other tasks and let the console_task handle input
+    vTaskDelay(pdMS_TO_TICKS(10)); // 10ms delay
+    
+    // Check if there might be data available by attempting a non-blocking read
+    // This will trigger console_task to wake up if data is available
+    sched_wake_task(&console_wake);
 }
