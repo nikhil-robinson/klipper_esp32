@@ -80,8 +80,12 @@ add_custom_command(
     VERBATIM
 )
 
+# Create a custom target for the generated file
+add_custom_target(${COMPONENT_TARGET}_ctr_gen DEPENDS ${CTR_FILE})
+
 # Create a separate library for compile_time_request.c
 add_library(${COMPONENT_TARGET}_ctr STATIC ${CTR_FILE})
+add_dependencies(${COMPONENT_TARGET}_ctr ${COMPONENT_TARGET}_ctr_gen)
 
 # Set up include directories for the CTR library
 target_include_directories(${COMPONENT_TARGET}_ctr PRIVATE
@@ -92,5 +96,5 @@ target_include_directories(${COMPONENT_TARGET}_ctr PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-# Link the CTR library to the main component
-target_link_libraries(${COMPONENT_LIB} PRIVATE ${COMPONENT_TARGET}_ctr)
+# Simply link the CTR library to make it available at final link time
+target_link_libraries(${COMPONENT_LIB} INTERFACE ${COMPONENT_TARGET}_ctr)
