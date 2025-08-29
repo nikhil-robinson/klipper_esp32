@@ -1,9 +1,9 @@
-// ESP32 Console Implementation with VFS support
+// ESP32 Console Implementation with VFS support - Robust version
 // Supports both UART and USB CDC based on configuration
 //
 // Based on Linux console.c from Klipper
 // Copyright (C) 2017-2021  Kevin O'Connor <kevin@koconnor.net>
-// ESP32 adaptation: Copyright (C) 2024
+// ESP32 adaptation: Copyright (C) 2024 Nikhil Robinson <nikhil@techprogeny.com>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
@@ -16,6 +16,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "autoconf.h"  // CONFIG_* definitions
 #include "config.h"
 
 #ifdef CONFIG_CONSOLE_UART
@@ -31,18 +32,28 @@
 #include "esp_vfs_console.h"
 #include "esp_log.h"
 
-#include "irq.h"
-#include "misc.h"
+#include "board/irq.h"
+#include "board/misc.h"
 #include "command.h"
-#include "internal.h"
+#include "board/internal.h"
 #include "sched.h"
 
 static const char* TAG = "console";
+
+// Buffer size constants
+#ifndef CONFIG_CONSOLE_RX_BUFFER_SIZE
+#define CONFIG_CONSOLE_RX_BUFFER_SIZE 256
+#endif
+
+#ifndef CONFIG_UART_TX_BUFFER_SIZE 
+#define CONFIG_UART_TX_BUFFER_SIZE 256
+#endif
 
 // Console state
 static struct task_wake console_wake;
 static uint8_t receive_buf[CONFIG_CONSOLE_RX_BUFFER_SIZE];
 static int receive_pos;
+static volatile uint8_t console_active = 0;
 
 /****************************************************************
  * Utility Functions
@@ -183,7 +194,9 @@ int console_setup(char *name)
         return ret;
     }
 
+    // Initialize console state
     receive_pos = 0;
+    console_active = 1;
 
     ESP_LOGI(TAG, "Console setup complete");
     return 0;
@@ -199,10 +212,10 @@ void *console_receive_buffer(void)
     return receive_buf;
 }
 
-// Process incoming console data
+// Process incoming console data - robust implementation
 void console_task(void)
 {
-    if (!sched_check_wake(&console_wake))
+    if (!sched_check_wake(&console_wake) || !console_active)
         return;
 
     // Read available data from console
@@ -222,7 +235,7 @@ void console_task(void)
     }
 
     // Check for force shutdown command
-    if (ret == 15 && receive_buf[receive_pos + 14] == '\n' &&
+    if (ret == 15 && receive_pos + ret >= 15 && receive_buf[receive_pos + 14] == '\n' &&
         memcmp(&receive_buf[receive_pos], "FORCE_SHUTDOWN\n", 15) == 0) {
         shutdown("Force shutdown command");
         return;
@@ -241,25 +254,53 @@ void console_task(void)
             sched_wake_task(&console_wake);
         }
     }
+    
+    // Bounds check for receive_pos
+    if (len >= sizeof(receive_buf)) {
+        // Buffer overflow protection - keep only the most recent data
+        len = sizeof(receive_buf) - 1;
+        ESP_LOGW(TAG, "Console buffer overflow, truncating");
+    }
+    
     receive_pos = len;
 }
 DECL_TASK(console_task);
 
-// Encode and transmit a response message
+// Encode and transmit a response message - with error handling
 void console_sendf(const struct command_encoder *ce, va_list args)
 {
     uint8_t buf[MESSAGE_MAX];
     uint_fast8_t msglen = command_encode_and_frame(buf, ce, args);
 
+    if (msglen == 0 || msglen > MESSAGE_MAX) {
+        ESP_LOGE(TAG, "Invalid message length: %d", msglen);
+        return;
+    }
+
     int ret = write(STDOUT_FILENO, buf, msglen);
     if (ret < 0) {
         report_errno("console write", ret);
+    } else if (ret != msglen) {
+        ESP_LOGW(TAG, "Partial write: expected %d, wrote %d", msglen, ret);
     }
 }
 
-// Sleep until console input is available
+// Console kick function - wake up console processing
+void console_kick(void)
+{
+    if (console_active) {
+        sched_wake_task(&console_wake);
+    }
+}
+
+// Sleep until console input is available - improved version
 void console_sleep(void)
 {
+    if (!console_active) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        return;
+    }
+    
     // On ESP32 with VFS, we don't need complex polling
     // Just yield to other tasks and let the console_task handle input
     vTaskDelay(pdMS_TO_TICKS(10)); // 10ms delay
@@ -268,3 +309,11 @@ void console_sleep(void)
     // This will trigger console_task to wake up if data is available
     sched_wake_task(&console_wake);
 }
+
+// Shutdown console cleanly
+void console_shutdown(void)
+{
+    console_active = 0;
+    ESP_LOGI(TAG, "Console shutdown");
+}
+DECL_SHUTDOWN(console_shutdown);

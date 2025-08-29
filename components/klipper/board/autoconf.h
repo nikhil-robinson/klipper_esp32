@@ -1,5 +1,10 @@
 #include "sdkconfig.h"
 
+// Clock frequency configuration - ESP32 timer runs at 1MHz
+#ifndef CONFIG_CLOCK_FREQ
+#define CONFIG_CLOCK_FREQ 1000000
+#endif
+
 #ifndef CONFIG_LOW_LEVEL_OPTIONS
 #define CONFIG_LOW_LEVEL_OPTIONS 0
 #endif
