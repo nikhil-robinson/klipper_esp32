@@ -44,13 +44,17 @@ set(SOURCES
     klipper/src/generic/timer_irq.c
 )
 
-# Component name with ESP-IDF prefix
-set(COMPONENT_TARGET __idf_klipper)
-
-# Find Python executable (ESP-IDF usually sets this)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
-# First, register the component WITHOUT compile_time_request.c
+set(EXTRACT_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/extract_compile_time_requests.py)
+set(CTR_FILE ${CMAKE_CURRENT_BINARY_DIR}/compile_time_request.c)
+
+if(NOT EXISTS ${CTR_FILE})
+    file(WRITE ${CTR_FILE} "// Placeholder CTR file\nvoid ctr_placeholder() {}\n")
+endif()
+
+list(APPEND SOURCES ${CTR_FILE})
+
 idf_component_register(
     SRCS ${SOURCES}
     INCLUDE_DIRS
@@ -58,43 +62,19 @@ idf_component_register(
         klipper/src/generic
         .
         board
-    REQUIRES driver esp_adc esp_vfs_console esp_driver_usb_serial_jtag
+    REQUIRES driver esp_adc esp_vfs_console esp_driver_usb_serial_jtag esp_system
 )
 
-# Path to the extraction script
-set(EXTRACT_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/extract_compile_time_requests.py)
-set(CTR_FILE ${CMAKE_CURRENT_BINARY_DIR}/compile_time_request.c)
-
-# Generate compile_time_request.c after all main source object files are built
 add_custom_command(
-    OUTPUT ${CTR_FILE}
+    TARGET ${COMPONENT_LIB} PRE_BUILD
     COMMAND ${Python3_EXECUTABLE} ${EXTRACT_SCRIPT}
         ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${COMPONENT_TARGET}
+        ${COMPONENT_LIB}
         "${CMAKE_C_COMPILER};${CMAKE_ASM_COMPILER};${CMAKE_LINKER};${CMAKE_OBJCOPY};${CMAKE_OBJDUMP};${CMAKE_STRIP}"
         --python ${Python3_EXECUTABLE}
         --objcopy ${CMAKE_OBJCOPY}
-    DEPENDS ${COMPONENT_LIB}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Generating compile_time_request.c from object files"
     VERBATIM
 )
-
-# Create a custom target for the generated file
-add_custom_target(${COMPONENT_TARGET}_ctr_gen DEPENDS ${CTR_FILE})
-
-# Create a separate library for compile_time_request.c
-add_library(${COMPONENT_TARGET}_ctr STATIC ${CTR_FILE})
-add_dependencies(${COMPONENT_TARGET}_ctr ${COMPONENT_TARGET}_ctr_gen)
-
-# Set up include directories for the CTR library
-target_include_directories(${COMPONENT_TARGET}_ctr PRIVATE
-    klipper/src
-    klipper/src/generic
-    .
-    board
-    ${CMAKE_CURRENT_BINARY_DIR}
-)
-
-# Simply link the CTR library to make it available at final link time
-target_link_libraries(${COMPONENT_LIB} INTERFACE ${COMPONENT_TARGET}_ctr)
