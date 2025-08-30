@@ -28,8 +28,9 @@
 static const char* TAG = "timer";
 
 static gptimer_handle_t gptimer = NULL;
-static volatile uint32_t timer_high = 0;
+static volatile uint64_t timer_high = 0;
 static volatile uint32_t last_timer_read = 0;
+static portMUX_TYPE timer_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 // Timer state tracking
 static struct {
@@ -37,37 +38,34 @@ static struct {
     uint32_t next_wake_time;
 } TimerInfo;
 
-/****************************************************************
- * Low level timer code
- ****************************************************************/
-
-DECL_CONSTANT("CLOCK_FREQ", CONFIG_CLOCK_FREQ);
-
 // Return the current time (in absolute clock ticks).
 uint32_t timer_read_time(void) {
-    uint32_t count_low, count_high_before, count_high_after;
+    uint64_t count;
+    uint32_t current_time;
     
-    // Handle 32-bit overflow by tracking high bits
-    do {
-        count_high_before = timer_high;
-        ESP_ERROR_CHECK(gptimer_get_raw_count(gptimer, &count_low));
-        count_high_after = timer_high;
-    } while (count_high_before != count_high_after);
+    // Use spinlock for atomic access to timer state
+    portENTER_CRITICAL(&timer_spinlock);
     
-    uint32_t current_time = (count_high_before << 16) | (count_low & 0xFFFF);
+    ESP_ERROR_CHECK(gptimer_get_raw_count(gptimer, &count));
     
-    // Check for timer wrap-around and update high bits
-    if (count_low < last_timer_read && count_low < 0x8000 && last_timer_read > 0x8000) {
-        timer_high++;
-        current_time = (timer_high << 16) | (count_low & 0xFFFF);
+    // Check for timer wrap-around (ESP32 timer is 64-bit but we use 32-bit interface)
+    if ((uint32_t)count < last_timer_read) {
+        timer_high += 0x100000000ULL;
     }
+    last_timer_read = (uint32_t)count;
     
-    last_timer_read = count_low;
+    // Combine high and low parts for 32-bit result
+    current_time = (uint32_t)((timer_high + count) & 0xFFFFFFFF);
+    
+    portEXIT_CRITICAL(&timer_spinlock);
+    
     return current_time;
 }
 
 // Set timer for next interrupt
 void timer_set(uint32_t next) {
+    portENTER_CRITICAL(&timer_spinlock);
+    
     gptimer_alarm_config_t alarm_config = {
         .alarm_count = next,
         .reload_count = 0,
@@ -83,6 +81,8 @@ void timer_set(uint32_t next) {
     }
     
     TimerInfo.next_wake_time = next;
+    
+    portEXIT_CRITICAL(&timer_spinlock);
 }
 
 // Activate timer dispatch as soon as possible
@@ -113,7 +113,7 @@ static bool IRAM_ATTR timer_irq_handler(
 void timer_init(void) {
     ESP_LOGI(TAG, "Initializing timer with frequency %d Hz", CONFIG_CLOCK_FREQ);
     
-    irq_disable();
+    portENTER_CRITICAL(&timer_spinlock);
     
     gptimer_config_t timer_config = {
         .clk_src = GPTIMER_CLK_SRC_DEFAULT,
@@ -135,8 +135,9 @@ void timer_init(void) {
     timer_high = 0;
     last_timer_read = 0;
     
+    portEXIT_CRITICAL(&timer_spinlock);
+    
     timer_kick();
-    irq_enable();
     
     ESP_LOGI(TAG, "Timer initialized successfully");
 }
@@ -144,10 +145,16 @@ DECL_INIT(timer_init);
 
 // Robust timer dispatch function based on Linux implementation
 void timer_dispatch() {
-    if (!TimerInfo.must_dispatch)
+    portENTER_CRITICAL(&timer_spinlock);
+    
+    if (!TimerInfo.must_dispatch) {
+        portEXIT_CRITICAL(&timer_spinlock);
         return;
+    }
         
     TimerInfo.must_dispatch = 0;
+    
+    portEXIT_CRITICAL(&timer_spinlock);
     
     // Use the generic timer dispatch function
     uint32_t next = timer_dispatch_many();
@@ -160,23 +167,29 @@ void timer_dispatch() {
  * Interrupt wrappers - ESP32 specific implementations
  ****************************************************************/
 
+// Global IRQ disable using FreeRTOS critical sections
+static portMUX_TYPE global_irq_spinlock = portMUX_INITIALIZER_UNLOCKED;
+
 void irq_disable(void) {
-    // On FreeRTOS, we use critical sections instead of global IRQ disable
-    // This is handled by the calling code using taskENTER_CRITICAL/taskEXIT_CRITICAL
+    portENTER_CRITICAL(&global_irq_spinlock);
 }
 
+// Global IRQ enable using FreeRTOS critical sections  
 void irq_enable(void) {
-    // On FreeRTOS, we use critical sections instead of global IRQ enable
-    // This is handled by the calling code using taskENTER_CRITICAL/taskEXIT_CRITICAL
+    portEXIT_CRITICAL(&global_irq_spinlock);
 }
 
+// Save current interrupt state
 irqstatus_t irq_save(void) { 
-    // Return current interrupt state - not used in FreeRTOS context
-    return 0; 
+    portENTER_CRITICAL(&global_irq_spinlock);
+    return 1; // Indicate IRQs were disabled
 }
 
+// Restore interrupt state
 void irq_restore(irqstatus_t flag) {
-    // Restore interrupt state - not used in FreeRTOS context
+    if (flag) {
+        portEXIT_CRITICAL(&global_irq_spinlock);
+    }
 }
 
 void irq_wait(void) {
@@ -193,6 +206,8 @@ void irq_poll(void) {
 }
 
 void clear_active_irq(void) {
+    portENTER_CRITICAL(&timer_spinlock);
     TimerInfo.must_dispatch = 0;
+    portEXIT_CRITICAL(&timer_spinlock);
 }
 DECL_SHUTDOWN(clear_active_irq);

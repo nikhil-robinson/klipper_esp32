@@ -16,15 +16,14 @@
 #include "sched.h" // sched_shutdown
 #include "soc/gpio_num.h"
 #include "soc/gpio_struct.h"
-#include <string.h> // ffs
+#include <string.h> // ffs, memset
 #define TAG "KLIPPER_GPIO"
 
 /****************************************************************
  * Pin mappings
  ****************************************************************/
 
-// DECL_ENUMERATION_RANGE("pin", "GPIO_NUM_", 0, 30);
-DECL_ENUMERATION_RANGE("pin", "GPIO_NUM_", 0, 255);
+DECL_ENUMERATION_RANGE("pin", "GPIO_NUM_0", 0, GPIO_NUM_MAX-1);
 
 gpio_dev_t *hw = &GPIO;
 
@@ -33,11 +32,23 @@ gpio_dev_t *hw = &GPIO;
  ****************************************************************/
 
 struct gpio_out gpio_out_setup(uint32_t gpio_num, uint32_t val) {
-
-  static struct gpio_line gpio_line;
-  gpio_line.pin = gpio_num;
-  gpio_line.state = !!val;
-  struct gpio_out g = {.line = &gpio_line};
+  
+  if (gpio_num >= GPIO_NUM_MAX) {
+    shutdown("Invalid GPIO pin");
+  }
+  
+  static struct gpio_line gpio_lines[GPIO_NUM_MAX];
+  static int initialized = 0;
+  
+  if (!initialized) {
+    memset(gpio_lines, 0, sizeof(gpio_lines));
+    initialized = 1;
+  }
+  
+  struct gpio_line *line = &gpio_lines[gpio_num];
+  line->pin = gpio_num;
+  line->state = !!val;
+  struct gpio_out g = {.line = line};
   gpio_ll_output_enable(hw, gpio_num);
   gpio_out_write(g, val);
   return g;
@@ -60,12 +71,21 @@ void gpio_out_write(struct gpio_out g, uint32_t val) {
 }
 
 struct gpio_in gpio_in_setup(uint8_t pin, int8_t pull_up) {
+  if (pin >= GPIO_NUM_MAX) {
+    shutdown("Invalid GPIO pin");
+  }
+  
   struct gpio_in g = {.pin = pin};
   gpio_ll_input_enable(hw, pin);
-  if (pull_up) {
+  if (pull_up > 0) {
     gpio_ll_pullup_en(hw, pin);
+    gpio_ll_pulldown_dis(hw, pin);
+  } else if (pull_up < 0) {
+    gpio_ll_pullup_dis(hw, pin);
+    gpio_ll_pulldown_en(hw, pin);
   } else {
     gpio_ll_pullup_dis(hw, pin);
+    gpio_ll_pulldown_dis(hw, pin);
   }
 
   return g;
