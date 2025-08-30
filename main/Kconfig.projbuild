@@ -1,56 +1,1476 @@
 menu "Klipper Firmware Configuration"
+    
+    comment "Micro-controller Architecture Selection"
+    
+    config MACH_ESP32
+        bool
+        default y
+        help
+            ESP32 architecture is enabled
+    
+    # All other architectures (disabled for ESP32)
+    config MACH_AVR
+        bool
+        default n
+    config MACH_ATSAM
+        bool
+        default n
+    config MACH_ATSAMD
+        bool
+        default n
+    config MACH_LPC176X
+        bool
+        default n
+    config MACH_STM32
+        bool
+        default n
+    config MACH_HC32F460
+        bool
+        default n
+    config MACH_RPXXXX
+        bool
+        default n
+    config MACH_RP2040
+        bool
+        default n
+    config MACH_PRU
+        bool
+        default n
+    config MACH_AR100
+        bool
+        default n
+    config MACH_LINUX
+        bool
+        default n
+    config MACH_SIMU
+        bool
+        default n
+
+    # Architecture sub-selections (all disabled for ESP32)
+    config AVR_SELECT
+        bool
+        default n
+    config ATSAM_SELECT
+        bool
+        default n
+    config ATSAMD_SELECT
+        bool
+        default n
+    config LPC_SELECT
+        bool
+        default n
+    config STM32_SELECT
+        bool
+        default n
+    config HC32F460_SELECT
+        bool
+        default n
+    config RPXXXX_SELECT
+        bool
+        default n
+    config PRU_SELECT
+        bool
+        default n
+    config AR100_SELECT
+        bool
+        default n
+    config LINUX_SELECT
+        bool
+        default n
+    config SIMULATOR_SELECT
+        bool
+        default n
+
+    comment "Board Configuration"
+    
+    config BOARD_DIRECTORY
+        string "Board directory"
+        default "esp32"
+        help
+            Board-specific directory name
+    
     config MCU
         string "MCU NAME"
         default "esp32"
+        help
+            The name of the microcontroller type
+
+    comment "AVR Configurations (disabled for ESP32)"
+    
+    # AVR specific MCU types
+    config MACH_atmega2560
+        bool
+        default n
+    config MACH_atmega1280
+        bool
+        default n
+    config MACH_at90usb1286
+        bool
+        default n
+    config MACH_at90usb646
+        bool
+        default n
+    config MACH_atmega32u4
+        bool
+        default n
+    config MACH_atmega1284p
+        bool
+        default n
+    config MACH_atmega644p
+        bool
+        default n
+    config MACH_atmega328p
+        bool
+        default n
+    config MACH_atmega328
+        bool
+        default n
+    config MACH_atmega168
+        bool
+        default n
+    
+    # AVR specific configurations
+    config AVRDUDE_PROTOCOL
+        string
+        default ""
+    config AVR_FREQ_16000000
+        bool
+        default n
+    config AVR_FREQ_20000000
+        bool
+        default n
+    config AVR_FREQ_8000000
+        bool
+        default n
+    config CLEAR_PRESCALER
+        bool
+        default n
+    config AVR_CLKPR
+        int
+        default 0
+    config AVR_STACK_SIZE
+        int
+        default 0
+    config AVR_WATCHDOG
+        bool
+        default n
+    config AVR_USB
+        bool
+        default n
+    config AVR_SERIAL_UART0
+        bool
+        default n
+    config AVR_SERIAL_UART1
+        bool
+        default n
+    config AVR_SERIAL_UART2
+        bool
+        default n
+    config AVR_SERIAL_UART3
+        bool
+        default n
+    config SERIAL_BAUD_U2X
+        bool
+        default n
+    config SERIAL_PORT
+        int
+        default 0
+    config SIMULAVR
+        bool
+        default n
+
+    comment "ATSAM Configurations (disabled for ESP32)"
+    
+    # ATSAM MCU types
+    config MACH_SAM3X8E
+        bool
+        default n
+    config MACH_SAM3X8C
+        bool
+        default n
+    config MACH_SAM4S8C
+        bool
+        default n
+    config MACH_SAM4E8E
+        bool
+        default n
+    config MACH_SAME70Q20B
+        bool
+        default n
+    config MACH_SAM3X
+        bool
+        default n
+    config MACH_SAM4
+        bool
+        default n
+    config MACH_SAM4S
+        bool
+        default n
+    config MACH_SAM4E
+        bool
+        default n
+    config MACH_SAME70
+        bool
+        default n
+    
+    # ATSAM specific configurations
+    config HAVE_SAM_CANBUS
+        bool
+        default n
+    config ATSAM_USB
+        bool
+        default n
+    config ATSAM_SERIAL
+        bool
+        default n
+    config ATSAM_MMENU_CANBUS_PC12_PD12
+        bool
+        default n
+    config ATSAM_MMENU_CANBUS_PB3_PB2
+        bool
+        default n
+    config ATSAM_USBCANBUS
+        bool
+        default n
+    config ATSAM_CMENU_CANBUS_PC12_PD12
+        bool
+        default n
+    config ATSAM_CMENU_CANBUS_PB3_PB2
+        bool
+        default n
+    config ATSAM_CANBUS_PC12_PD12
+        bool
+        default n
+    config ATSAM_CANBUS_PB3_PB2
+        bool
+        default n
+
+    comment "ATSAMD Configurations (disabled for ESP32)"
+    
+    # ATSAMD MCU types
+    config HAVE_SERCOM
+        bool
+        default n
+    config MACH_SAMC21G18
+        bool
+        default n
+    config MACH_SAMD21G18
+        bool
+        default n
+    config MACH_SAMD21E18
+        bool
+        default n
+    config MACH_SAMD21J18
+        bool
+        default n
+    config MACH_SAMD21E15
+        bool
+        default n
+    config MACH_SAMD51G19
+        bool
+        default n
+    config MACH_SAMD51J19
+        bool
+        default n
+    config MACH_SAMD51N19
+        bool
+        default n
+    config MACH_SAMD51P20
+        bool
+        default n
+    config MACH_SAME51J19
+        bool
+        default n
+    config MACH_SAME51N19
+        bool
+        default n
+    config MACH_SAME54P20
+        bool
+        default n
+    config MACH_SAMX2
+        bool
+        default n
+    config MACH_SAMC21
+        bool
+        default n
+    config MACH_SAMD21
+        bool
+        default n
+    config MACH_SAMX5
+        bool
+        default n
+    config MACH_SAMD51
+        bool
+        default n
+    config MACH_SAME51
+        bool
+        default n
+    config MACH_SAME54
+        bool
+        default n
+    
+    # ATSAMD specific configurations
+    config HAVE_SAMD_CANBUS
+        bool
+        default n
+    config HAVE_SAMD_USB
+        bool
+        default n
+    config SAMD_FLASH_START_2000
+        bool
+        default n
+    config SAMD_FLASH_START_4000
+        bool
+        default n
+    config SAMD_FLASH_START_0000
+        bool
+        default n
+    config CLOCK_REF_X32K
+        bool
+        default n
+    config CLOCK_REF_X12M
+        bool
+        default n
+    config CLOCK_REF_X25M
+        bool
+        default n
+    config CLOCK_REF_INTERNAL
+        bool
+        default n
+    config SAMD51_FREQ_120
+        bool
+        default n
+    config SAMD51_FREQ_150
+        bool
+        default n
+    config SAMD51_FREQ_180
+        bool
+        default n
+    config SAMD51_FREQ_200
+        bool
+        default n
+    config ATSAMD_USB
+        bool
+        default n
+    config ATSAMD_SERIAL
+        bool
+        default n
+    config ATSAMD_MMENU_CANBUS_PA23_PA22
+        bool
+        default n
+    config ATSAMD_MMENU_CANBUS_PA25_PA24
+        bool
+        default n
+    config ATSAMD_MMENU_CANBUS_PB11_PB10
+        bool
+        default n
+    config ATSAMD_MMENU_CANBUS_PB13_PB12
+        bool
+        default n
+    config ATSAMD_MMENU_CANBUS_PB15_PB14
+        bool
+        default n
+    config ATSAMD_USBCANBUS
+        bool
+        default n
+    config ATSAMD_CMENU_CANBUS_PA23_PA22
+        bool
+        default n
+    config ATSAMD_CMENU_CANBUS_PB13_PB12
+        bool
+        default n
+    config ATSAMD_CMENU_CANBUS_PB15_PB14
+        bool
+        default n
+    config ATSAMD_CANBUS_PA23_PA22
+        bool
+        default n
+    config ATSAMD_CANBUS_PA25_PA24
+        bool
+        default n
+    config ATSAMD_CANBUS_PB11_PB10
+        bool
+        default n
+    config ATSAMD_CANBUS_PB13_PB12
+        bool
+        default n
+    config ATSAMD_CANBUS_PB15_PB14
+        bool
+        default n
+
+    comment "LPC Configurations (disabled for ESP32)"
+    
+    # LPC MCU types
+    config MACH_LPC1768
+        bool
+        default n
+    config MACH_LPC1769
+        bool
+        default n
+    
+    # LPC specific configurations
+    config LPC_FLASH_START_4000
+        bool
+        default n
+    config LPC_FLASH_START_0000
+        bool
+        default n
+    config LPC_USB
+        bool
+        default n
+    config LPC_SERIAL_UART0_P03_P02
+        bool
+        default n
+    config LPC_SERIAL_UART3_P429_P428
+        bool
+        default n
+
+    comment "STM32 Configurations (disabled for ESP32)"
+    
+    # STM32 MCU types
+    config MACH_STM32F103
+        bool
+        default n
+    config MACH_STM32F207
+        bool
+        default n
+    config MACH_STM32F401
+        bool
+        default n
+    config MACH_STM32F405
+        bool
+        default n
+    config MACH_STM32F407
+        bool
+        default n
+    config MACH_STM32F429
+        bool
+        default n
+    config MACH_STM32F446
+        bool
+        default n
+    config MACH_STM32F765
+        bool
+        default n
+    config MACH_STM32F031
+        bool
+        default n
+    config MACH_STM32F042
+        bool
+        default n
+    config MACH_STM32F070
+        bool
+        default n
+    config MACH_STM32F072
+        bool
+        default n
+    config MACH_STM32G070
+        bool
+        default n
+    config MACH_STM32G071
+        bool
+        default n
+    config MACH_STM32G0B0
+        bool
+        default n
+    config MACH_STM32G0B1
+        bool
+        default n
+    config MACH_STM32G431
+        bool
+        default n
+    config MACH_STM32G474
+        bool
+        default n
+    config MACH_STM32H723
+        bool
+        default n
+    config MACH_STM32H743
+        bool
+        default n
+    config MACH_STM32H750
+        bool
+        default n
+    config MACH_STM32L412
+        bool
+        default n
+    config MACH_N32G452
+        bool
+        default n
+    config MACH_N32G455
+        bool
+        default n
+    
+    # STM32 family groupings
+    config MACH_STM32F103x6
+        bool
+        default n
+    config MACH_STM32F070x6
+        bool
+        default n
+    config MACH_STM32F0
+        bool
+        default n
+    config MACH_STM32F1
+        bool
+        default n
+    config MACH_STM32F2
+        bool
+        default n
+    config MACH_STM32F4
+        bool
+        default n
+    config MACH_STM32F7
+        bool
+        default n
+    config MACH_STM32G0
+        bool
+        default n
+    config MACH_STM32G07x
+        bool
+        default n
+    config MACH_STM32G0Bx
+        bool
+        default n
+    config MACH_STM32G4
+        bool
+        default n
+    config MACH_STM32H7
+        bool
+        default n
+    config MACH_STM32F0x2
+        bool
+        default n
+    config MACH_STM32F4x5
+        bool
+        default n
+    config MACH_STM32L4
+        bool
+        default n
+    config MACH_N32G45x
+        bool
+        default n
+    
+    # STM32 capabilities
+    config HAVE_STM32_USBFS
+        bool
+        default n
+    config HAVE_STM32_USBOTG
+        bool
+        default n
+    config HAVE_STM32_CANBUS
+        bool
+        default n
+    config HAVE_STM32_FDCANBUS
+        bool
+        default n
+    config HAVE_STM32_USBCANBUS
+        bool
+        default n
+    
+    # STM32 specific configurations
+    config STM32F103GD_DISABLE_SWD
+        bool
+        default n
+    config STM32_DFU_ROM_ADDRESS
+        hex
+        default 0x0
+    
+    # STM32 flash start addresses
+    config STM32_FLASH_START_2000
+        bool
+        default n
+    config STM32_FLASH_START_5000
+        bool
+        default n
+    config STM32_FLASH_START_7000
+        bool
+        default n
+    config STM32_FLASH_START_8000
+        bool
+        default n
+    config STM32_FLASH_START_8800
+        bool
+        default n
+    config STM32_FLASH_START_20200
+        bool
+        default n
+    config STM32_FLASH_START_9000
+        bool
+        default n
+    config STM32_FLASH_START_C000
+        bool
+        default n
+    config STM32_FLASH_START_10000
+        bool
+        default n
+    config STM32_FLASH_START_800
+        bool
+        default n
+    config STM32_FLASH_START_1000
+        bool
+        default n
+    config STM32_FLASH_START_4000
+        bool
+        default n
+    config STM32_FLASH_START_20000
+        bool
+        default n
+    config STM32_FLASH_START_0000
+        bool
+        default n
+    
+    # STM32 clock reference configurations
+    config STM32_CLOCK_REF_8M
+        bool
+        default n
+    config STM32_CLOCK_REF_12M
+        bool
+        default n
+    config STM32_CLOCK_REF_16M
+        bool
+        default n
+    config STM32_CLOCK_REF_20M
+        bool
+        default n
+    config STM32_CLOCK_REF_24M
+        bool
+        default n
+    config STM32_CLOCK_REF_25M
+        bool
+        default n
+    config STM32_CLOCK_REF_INTERNAL
+        bool
+        default n
+    
+    # STM32 trim value
+    config STM32F0_TRIM
+        int
+        default 16
+    
+    # STM32 USB configurations
+    config STM32_USB_PA11_PA12
+        bool
+        default n
+    config STM32_USB_PA11_PA12_REMAP
+        bool
+        default n
+    config STM32_USB_PB14_PB15
+        bool
+        default n
+    
+    # STM32 serial configurations
+    config STM32_SERIAL_USART1
+        bool
+        default n
+    config STM32_SERIAL_USART1_ALT_PB7_PB6
+        bool
+        default n
+    config STM32_SERIAL_USART2
+        bool
+        default n
+    config STM32_SERIAL_USART2_ALT_PA15_PA14
+        bool
+        default n
+    config STM32_SERIAL_USART2_ALT_PB4_PB3
+        bool
+        default n
+    config STM32_SERIAL_USART2_ALT_PD6_PD5
+        bool
+        default n
+    config STM32_SERIAL_USART3
+        bool
+        default n
+    config STM32_SERIAL_USART3_ALT_PD9_PD8
+        bool
+        default n
+    config STM32_SERIAL_USART3_ALT_PC11_PC10
+        bool
+        default n
+    config STM32_SERIAL_UART4
+        bool
+        default n
+    config STM32_SERIAL_USART5
+        bool
+        default n
+    config STM32_SERIAL_USART6
+        bool
+        default n
+    config STM32_SERIAL_USART6_ALT_PC7_PC6
+        bool
+        default n
+    
+    # STM32 CAN bus configurations
+    config STM32_CANBUS_PA11_PA12
+        bool
+        default n
+    config STM32_CANBUS_PA11_PA12_REMAP
+        bool
+        default n
+    config STM32_CANBUS_PA11_PB9
+        bool
+        default n
+    config STM32_MMENU_CANBUS_PB8_PB9
+        bool
+        default n
+    config STM32_MMENU_CANBUS_PI9_PH13
+        bool
+        default n
+    config STM32_MMENU_CANBUS_PB5_PB6
+        bool
+        default n
+    config STM32_MMENU_CANBUS_PB12_PB13
+        bool
+        default n
+    config STM32_MMENU_CANBUS_PD0_PD1
+        bool
+        default n
+    config STM32_MMENU_CANBUS_PB0_PB1
+        bool
+        default n
+    config STM32_MMENU_CANBUS_PD12_PD13
+        bool
+        default n
+    config STM32_MMENU_CANBUS_PC2_PC3
+        bool
+        default n
+    config STM32_MMENU_CANBUS_PH13_PH14
+        bool
+        default n
+    config STM32_USBCANBUS_PA11_PA12
+        bool
+        default n
+    config STM32_CMENU_CANBUS_PB8_PB9
+        bool
+        default n
+    config STM32_CMENU_CANBUS_PI9_PH13
+        bool
+        default n
+    config STM32_CMENU_CANBUS_PB5_PB6
+        bool
+        default n
+    config STM32_CMENU_CANBUS_PB12_PB13
+        bool
+        default n
+    config STM32_CMENU_CANBUS_PD0_PD1
+        bool
+        default n
+    config STM32_CMENU_CANBUS_PB0_PB1
+        bool
+        default n
+    config STM32_CMENU_CANBUS_PD12_PD13
+        bool
+        default n
+    config STM32_CMENU_CANBUS_PC2_PC3
+        bool
+        default n
+    config STM32_CMENU_CANBUS_PH13_PH14
+        bool
+        default n
+    config STM32_CANBUS_PB8_PB9
+        bool
+        default n
+    config STM32_CANBUS_PI9_PH13
+        bool
+        default n
+    config STM32_CANBUS_PB5_PB6
+        bool
+        default n
+    config STM32_CANBUS_PB12_PB13
+        bool
+        default n
+    config STM32_CANBUS_PD0_PD1
+        bool
+        default n
+    config STM32_CANBUS_PB0_PB1
+        bool
+        default n
+    config STM32_CANBUS_PD12_PD13
+        bool
+        default n
+    config STM32_CANBUS_PC2_PC3
+        bool
+        default n
+    config STM32_CANBUS_PH13_PH14
+        bool
+        default n
+
+    comment "HC32F460 Configurations (disabled for ESP32)"
+    
+    # HC32F460 serial configurations
+    config HC32F460_SERIAL_PA7_PA8
+        bool
+        default n
+    config HC32F460_SERIAL_PA13_PA14
+        bool
+        default n
+    config HC32F460_SERIAL_PA3_PA2
+        bool
+        default n
+    config HC32F460_SERIAL_PH2_PB10
+        bool
+        default n
+    config HC32F460_SERIAL_PA15_PA9
+        bool
+        default n
+    config HC32F460_SERIAL_PC0_PC1
+        bool
+        default n
+    
+    # HC32F460 flash addresses
+    config HC32F460_FLASH_APPLICATION_ADDRESS_0x008000
+        bool
+        default n
+    config HC32F460_FLASH_APPLICATION_ADDRESS_0x00C000
+        bool
+        default n
+    config HC32F460_FLASH_APPLICATION_ADDRESS_0x010000
+        bool
+        default n
+    
+    # HC32F460 clock speeds
+    config HC32F460_CLOCK_SPEED_168M
+        bool
+        default n
+    config HC32F460_CLOCK_SPEED_200M
+        bool
+        default n
+
+    comment "RP2040/RP2350 Configurations (disabled for ESP32)"
+    
+    # RP2040/RP2350 MCU types
+    config MACH_RP2040
+        bool
+        default n
+    config MACH_RP2350
+        bool
+        default n
+    
+    # RP2040/RP2350 specific configurations
+    config RP2040_HAVE_STAGE2
+        bool
+        default n
+    config RPXXXX_HAVE_BOOTLOADER
+        bool
+        default n
+    config RPXXXX_FLASH_START_0000
+        bool
+        default n
+    config RPXXXX_FLASH_START_0100
+        bool
+        default n
+    config RPXXXX_FLASH_START_4000
+        bool
+        default n
+    config RP2040_FLASH_W25Q080
+        bool
+        default n
+    config RP2040_FLASH_GENERIC_03
+        bool
+        default n
+    config RP2040_STAGE2_FILE
+        string
+        default ""
+    config RP2040_STAGE2_CLKDIV
+        int
+        default 0
+    
+    # RP2040/RP2350 communication
+    config RPXXXX_USB
+        bool
+        default n
+    config RPXXXX_SERIAL_UART0_PINS_0_1
+        bool
+        default n
+    config RPXXXX_SERIAL_UART0_PINS_12_13
+        bool
+        default n
+    config RPXXXX_SERIAL_UART0_PINS_16_17
+        bool
+        default n
+    config RPXXXX_SERIAL_UART0_PINS_28_29
+        bool
+        default n
+    config RPXXXX_SERIAL_UART1_PINS_4_5
+        bool
+        default n
+    config RPXXXX_SERIAL_UART1_PINS_8_9
+        bool
+        default n
+    config RPXXXX_SERIAL_UART1_PINS_20_21
+        bool
+        default n
+    config RPXXXX_SERIAL_UART1_PINS_24_25
+        bool
+        default n
+    config RPXXXX_CANBUS
+        bool
+        default n
+    config RPXXXX_USBCANBUS
+        bool
+        default n
+    config RPXXXX_CANBUS_GPIO_RX
+        int
+        default 0
+    config RPXXXX_CANBUS_GPIO_TX
+        int
+        default 0
+
+    comment "Basic Configuration"
+    
     config CLOCK_FREQ
         int "Timer frequency"
         default 1000000
+        help
+            The frequency of the hardware timer used for scheduling
+    
+    config LOW_LEVEL_OPTIONS
+        bool "Enable extra low-level configuration options"
+        default n
+        help
+            Enable low-level configuration options that (if modified) may
+            result in a build that does not function correctly.
+
+    comment "Memory Configuration"
+    
+    config FLASH_SIZE
+        hex "Flash size"
+        default 0x400000
+        help
+            Size of flash memory
+    
+    config FLASH_BOOT_ADDRESS
+        hex "Flash boot address"
+        default 0x0
+        help
+            Flash boot address
+    
+    config RAM_START
+        hex "RAM start address"
+        default 0x3FFB0000
+        help
+            RAM start address
+    
+    config RAM_SIZE
+        hex "RAM size"
+        default 0x50000
+        help
+            Size of RAM
+    
+    config STACK_SIZE
+        int "Stack size"
+        default 2048
+        help
+            Stack size in bytes
+    
+    config FLASH_APPLICATION_ADDRESS
+        hex "Flash application address"
+        default 0x10000
+        help
+            Flash application start address
+    
+    config ARMCM_ITCM_FLASH_MIRROR_START
+        hex "ITCM flash mirror start"
+        default 0x0
+        help
+            ITCM flash mirror start address
+    
+    config ARMCM_DTCM_START
+        hex "DTCM start address"
+        default 0x0
+        help
+            DTCM start address
+    
+    config ARMCM_DTCM_SIZE
+        hex "DTCM size"
+        default 0x0
+        help
+            DTCM size
+    
+    config ARMCM_RAM_VECTORTABLE
+        bool "ARM Cortex-M RAM vector table"
+        default n
+        help
+            Use RAM vector table for ARM Cortex-M
+    
+    config CLOCK_REF_FREQ
+        int "Clock reference frequency"
+        default 40000000
+        help
+            Reference clock frequency
+
+    comment "Hardware Capabilities"
+    
     config HAVE_GPIO
         bool "Board support GPIO"
+        default y
+        help
+            Board has general purpose digital input/output pins
+    
     config HAVE_GPIO_ADC
         bool "Board support ADC"
+        default y
+        help
+            Board has analog to digital converter pins
+    
     config HAVE_GPIO_SPI
         bool "Board support SPI"
+        default y
+        help
+            Board has SPI bus support
+    
     config HAVE_GPIO_SDIO
         bool "Board support SDIO"
+        default n
+        help
+            Board has SDIO support
+    
     config HAVE_GPIO_I2C
         bool "Board support I2C"
+        default y
+        help
+            Board has I2C bus support
+    
     config HAVE_GPIO_HARD_PWM
         bool "Board support PWM"
+        default y
+        help
+            Board has hardware PWM support
+    
     config HAVE_STRICT_TIMING
         bool "Board needs STRICT timing"
+        default n
+        help
+            Board requires strict timing for proper operation
+    
     config HAVE_CHIPID
         bool "Board have chip-id"
+        default y
+        help
+            Board can provide a unique chip identifier
+    
     config HAVE_STEPPER_BOTH_EDGE
         bool "Board support stepper both edge"
+        default n
+        help
+            Board supports triggering stepper on both edges
+    
     config HAVE_BOOTLOADER_REQUEST
         bool "Board have bootloader request"
+        default n
+        help
+            Board can request bootloader mode
+    
     config HAVE_LIMITED_CODE_SIZE
         bool "Board have limited code size"
-    config INLINE_STEPPER_HACK
-        bool "Enables gcc to inline stepper_event() into the main timer irq handler"
+        default n
+        help
+            Board has limited flash/code space
+    
+    config HAVE_SOFTWARE_DIVIDE_REQUIRED
+        bool "Board requires software divide"
+        default n
+        help
+            Board requires software division implementation
+
+    comment "Communication Options"
+    
     config SERIAL
         bool "Enable serial"
+        default n
+        help
+            Enable serial communication interface
+    
     config SERIAL_BAUD
         int "Baud rate for serial port"
         default 250000
+        depends on SERIAL
         help
             Specify the baud rate of the serial port. This should be set
             to 250000. Read the FAQ before changing this value.
-    config WANT_GPIO_BITBANGING
-        bool "Support GPIO bit-banging devices"
-    config WANT_DISPLAYS
-        bool "Support LCD devices"
-    config WANT_SENSORS
-        bool "Support external sensor devices"
-    config WANT_LIS2DW
-        bool "Support lis2dw 3-axis accelerometer"
-    config WANT_LDC1612
-        bool "Support ldc1612 eddy current sensor"
-    config WANT_SOFTWARE_I2C
-        bool "Support software based I2C bit-banging"
+    
+    config USBSERIAL
+        bool "Enable USB serial"
+        default n
+        help
+            Enable USB serial communication
+    
+    config USBCANBUS
+        bool "Enable USB CAN bus"
+        default n
+        help
+            Enable USB CAN bus communication
+    
+    config USB
+        bool "Enable USB"
+        default n
+        help
+            Enable USB support
+    
+    config USB_VENDOR_ID
+        hex "USB Vendor ID"
+        default 0x1d50
+        depends on USB
+        help
+            USB vendor ID for the device
+    
+    config USB_DEVICE_ID
+        hex "USB Device ID"
+        default 0x614e
+        depends on USB
+        help
+            USB device ID
+    
+    config USB_SERIAL_NUMBER_CHIPID
+        bool "Use chip ID as USB serial number"
+        default n
+        depends on USB
+        help
+            Use the chip ID as the USB serial number
+    
+    config USB_SERIAL_NUMBER
+        string "USB Serial Number"
+        default "12345"
+        depends on USB && !USB_SERIAL_NUMBER_CHIPID
+        help
+            Custom USB serial number string
+    
+    config CANSERIAL
+        bool "Enable CAN serial"
+        default n
+        help
+            Enable CAN bus serial communication
+    
+    config CANBUS
+        bool "Enable CAN bus"
+        default n
+        help
+            Enable CAN bus support
+    
+    config CANBUS_FREQUENCY
+        int "CAN bus frequency"
+        default 1000000
+        depends on CANBUS
+        help
+            CAN bus frequency in Hz
+    
+    config CANBUS_FILTER
+        int "CAN bus filter"
+        default 0
+        depends on CANBUS
+        help
+            CAN bus message filter
+
+    comment "Optional Features"
+    
+    config WANT_ADC
+        bool "Support ADC devices"
+        default y
+        depends on HAVE_GPIO_ADC
+        help
+            Support for analog-to-digital converter devices
+    
+    config WANT_SPI
+        bool "Support SPI devices"
+        default y
+        depends on HAVE_GPIO_SPI
+        help
+            Support for SPI communication devices
+    
     config WANT_SOFTWARE_SPI
         bool "Support software based SPI bit-banging"
+        default y
+        depends on HAVE_GPIO
+        help
+            Support for software-based SPI implementation
+    
+    config WANT_I2C
+        bool "Support I2C devices"
+        default y
+        depends on HAVE_GPIO_I2C
+        help
+            Support for I2C communication devices
+    
+    config WANT_SOFTWARE_I2C
+        bool "Support software based I2C bit-banging"
+        default y
+        depends on HAVE_GPIO
+        help
+            Support for software-based I2C implementation
+    
+    config WANT_HARD_PWM
+        bool "Support hardware PWM"
+        default y
+        depends on HAVE_GPIO_HARD_PWM
+        help
+            Support for hardware PWM output
+    
+    config WANT_GPIO_BITBANGING
+        bool "Support GPIO bit-banging devices"
+        default y
+        depends on HAVE_GPIO
+        help
+            Support devices that use GPIO bit-banging
+    
+    config WANT_DISPLAYS
+        bool "Support LCD devices"
+        default y
+        depends on HAVE_GPIO
+        help
+            Support for LCD and other display devices
+    
+    config WANT_SENSORS
+        bool "Support external sensor devices"
+        default y
+        depends on HAVE_GPIO_I2C || HAVE_GPIO_SPI
+        help
+            Support for external sensor devices
+    
+    config WANT_BUTTONS
+        bool "Support button devices"
+        default y
+        depends on HAVE_GPIO
+        help
+            Support for button input devices
+    
+    config WANT_TMCUART
+        bool "Support TMC UART drivers"
+        default y
+        depends on HAVE_GPIO
+        help
+            Support for TMC stepper motor drivers with UART interface
+    
+    config WANT_NEOPIXEL
+        bool "Support NeoPixel LEDs"
+        default y
+        depends on HAVE_GPIO
+        help
+            Support for NeoPixel/WS2812 LED strips
+    
+    config WANT_PULSE_COUNTER
+        bool "Support pulse counter"
+        default y
+        depends on HAVE_GPIO
+        help
+            Support for pulse counting devices
+    
+    config WANT_ST7920
+        bool "Support ST7920 displays"
+        default y
+        depends on WANT_DISPLAYS
+        help
+            Support for ST7920 LCD displays
+    
+    config WANT_HD44780
+        bool "Support HD44780 displays"
+        default y
+        depends on WANT_DISPLAYS
+        help
+            Support for HD44780 character LCD displays
 
+    comment "Sensor Support"
+    
+    config WANT_ADXL345
+        bool "Support ADXL345 3-axis accelerometer"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for ADXL345 3-axis accelerometer
+    
+    config WANT_LIS2DW
+        bool "Support LIS2DW 3-axis accelerometer"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for LIS2DW 3-axis accelerometer
+    
+    config WANT_MPU9250
+        bool "Support MPU9250 IMU"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for MPU9250 9-axis IMU
+    
+    config WANT_ICM20948
+        bool "Support ICM20948 IMU"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for ICM20948 9-axis IMU
+    
+    config WANT_THERMOCOUPLE
+        bool "Support thermocouple sensors"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for thermocouple temperature sensors
+    
+    config WANT_HX71X
+        bool "Support HX711/HX717 load cell amplifiers"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for HX711/HX717 load cell amplifiers
+    
+    config WANT_ADS1220
+        bool "Support ADS1220 ADC"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for ADS1220 precision ADC
+    
+    config WANT_LDC1612
+        bool "Support LDC1612 eddy current sensor"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for LDC1612 eddy current sensor
+    
+    config WANT_SENSOR_ANGLE
+        bool "Support angle sensors"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for angle/rotation sensors
+    
+    config WANT_LOAD_CELL_PROBE
+        bool "Support load cell probe"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for load cell based probing
+    
+    config NEED_SENSOR_BULK
+        bool "Support sensor bulk reads"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for bulk sensor reading operations
+    
+    config NEED_SOS_FILTER
+        bool "Support SOS filtering"
+        default y
+        depends on WANT_SENSORS
+        help
+            Support for SOS (Second Order Sections) filtering
+
+    comment "Advanced Options"
+    
+    config INLINE_STEPPER_HACK
+        bool "Enables gcc to inline stepper_event() into the main timer irq handler"
+        default y
+        depends on LOW_LEVEL_OPTIONS
+        help
+            This is a low-level optimization that may improve performance
+            but could cause issues on some configurations
+    
+    config HAVE_STEPPER_OPTIMIZED_BOTH_EDGE
+        bool "Board supports optimized stepper both edge"
+        default n
+        help
+            Board supports optimized stepper both edge timing
+    
+    config WANT_STEPPER_OPTIMIZED_BOTH_EDGE
+        bool "Enable optimized stepper both edge"
+        default n
+        depends on HAVE_STEPPER_OPTIMIZED_BOTH_EDGE
+        help
+            Enable optimized stepper both edge functionality
+    
+    config INITIAL_PINS
+        string "Initial pin configuration"
+        default ""
+        help
+            Comma separated list of initial pin configurations
+
+    comment "Console Configuration"
+    
+    choice KLIPPER_CONSOLE_TYPE
+        prompt "Console type"
+        default KLIPPER_CONSOLE_UART if !SOC_USB_SERIAL_JTAG_SUPPORTED
+        default KLIPPER_CONSOLE_USB_CDC if SOC_USB_SERIAL_JTAG_SUPPORTED
+        help
+            Select the console interface for Klipper communication
+        
+        config KLIPPER_CONSOLE_UART
+            bool "UART Console"
+            help
+                Use UART for console communication
+        
+        config KLIPPER_CONSOLE_USB_CDC
+            bool "USB CDC Console"
+            depends on SOC_USB_SERIAL_JTAG_SUPPORTED
+            help
+                Use USB CDC (Virtual COM port) for console communication
+                Only available on ESP32 variants with USB support
+    endchoice
+    
+    # UART Console Configuration
+    menu "UART Console Settings"
+        depends on KLIPPER_CONSOLE_UART
+        
+        config KLIPPER_UART_NUM
+            int "UART Number"
+            range 0 2
+            default 0
+            help
+                UART peripheral number (0, 1, or 2)
+        
+        config KLIPPER_UART_BAUD_RATE
+            int "UART Baud Rate"
+            default 115200
+            help
+                UART baud rate for console communication
+        
+        config KLIPPER_UART_TX_PIN
+            int "UART TX Pin"
+            range 0 48
+            default 1
+            help
+                GPIO pin for UART TX (default: GPIO 1)
+        
+        config KLIPPER_UART_RX_PIN
+            int "UART RX Pin" 
+            range 0 48
+            default 3
+            help
+                GPIO pin for UART RX (default: GPIO 3)
+        
+        config KLIPPER_UART_RTS_PIN
+            int "UART RTS Pin (optional)"
+            range -1 48
+            default -1
+            help
+                GPIO pin for UART RTS, set to -1 to disable
+        
+        config KLIPPER_UART_CTS_PIN
+            int "UART CTS Pin (optional)"
+            range -1 48
+            default -1
+            help
+                GPIO pin for UART CTS, set to -1 to disable
+        
+        config KLIPPER_UART_TX_BUFFER_SIZE
+            int "UART TX Buffer Size"
+            range 64 2048
+            default 256
+            help
+                Size of UART transmit buffer
+        
+        config KLIPPER_UART_RX_BUFFER_SIZE
+            int "UART RX Buffer Size"
+            range 64 4096
+            default 1024
+            help
+                Size of UART receive buffer
+    endmenu
+    
+    # Console Buffer Configuration
+    config KLIPPER_CONSOLE_RX_BUFFER_SIZE
+        int "Console RX Buffer Size"
+        range 512 8192
+        default 4096
+        help
+            Size of console receive buffer for command processing
 
 endmenu

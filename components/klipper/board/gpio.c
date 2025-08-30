@@ -24,7 +24,7 @@
  ****************************************************************/
 
 // DECL_ENUMERATION_RANGE("pin", "GPIO_NUM_", 0, 30);
-DECL_ENUMERATION_RANGE("pin", "GPIO_NUM_0", 0, 255);
+DECL_ENUMERATION_RANGE("pin", "GPIO_NUM_", 0, 255);
 
 gpio_dev_t *hw = &GPIO;
 

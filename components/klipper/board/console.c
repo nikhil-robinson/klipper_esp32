@@ -17,7 +17,6 @@
 #include "freertos/task.h"
 
 #include "autoconf.h"  // CONFIG_* definitions
-#include "config.h"
 
 #ifdef CONFIG_CONSOLE_UART
 #include "driver/uart.h"

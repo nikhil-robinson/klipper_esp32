@@ -15,3 +15,4 @@ sdkconfig
 sdkconfig.old
 components/klipper/compile_time_request.c 
 components/klipper/klipper.dict
+autoconf.h
