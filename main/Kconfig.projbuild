@@ -30,9 +30,6 @@ menu "Klipper Firmware Configuration"
     config MACH_RPXXXX
         bool
         default n
-    config MACH_RP2040
-        bool
-        default n
     config MACH_PRU
         bool
         default n
