@@ -22,18 +22,16 @@ DECL_COMMAND_FLAGS(command_config_reset, HF_IN_SHUTDOWN, "config_reset");
 
 void main_task(void *pvparameters)
 {
-    // Subscribe this task to the watchdog timer (5 second timeout)
+    // Subscribe this task to the watchdog timer (5 second timeout).
+    // The actual reset call is in irq_wait() which runs every scheduler loop,
+    // since sched_main() contains its own for(;;) and never returns.
     esp_task_wdt_add(NULL);
 
     console_setup(NULL);
-    for (;;)
-    {
-        sched_main();
-        // Reset watchdog each scheduler loop
-        esp_task_wdt_reset();
-    }
+    sched_main();
+
+    // sched_main() only returns on unrecoverable error
     vTaskDelete(NULL);
-    
 }
 
 void app_main(void)

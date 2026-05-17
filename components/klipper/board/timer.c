@@ -11,6 +11,7 @@
 #include "command.h"         // DECL_SHUTDOWN
 #include "driver/gptimer.h"
 #include "esp_log.h"
+#include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -29,6 +30,7 @@ static const char* TAG = "timer";
 
 static gptimer_handle_t gptimer = NULL;
 static portMUX_TYPE timer_spinlock = portMUX_INITIALIZER_UNLOCKED;
+static TaskHandle_t klipper_task = NULL;
 
 // Timer state tracking
 static struct {
@@ -94,19 +96,29 @@ static bool IRAM_ATTR timer_irq_handler(
     void *user_data) {
 
     BaseType_t high_task_awoken = pdFALSE;
-    
-    // Stop the current timer
-    gptimer_stop(timer);
-    
-    // Signal that timer dispatch is needed
+
+    // Signal that timer dispatch is needed.
+    // Do NOT call gptimer_stop() here: stopping the timer freezes the hardware
+    // counter, making timer_read_time() return stale values until the next
+    // timer_set() call.  With auto_reload_on_alarm=false the alarm fires once
+    // and will not re-trigger on its own.
     TimerInfo.must_dispatch = 1;
-    
+
+    // Wake the Klipper task so irq_wait() returns immediately instead of
+    // waiting for the full sleep timeout.
+    if (klipper_task)
+        vTaskNotifyGiveFromISR(klipper_task, &high_task_awoken);
+
     return (high_task_awoken == pdTRUE);
 }
 
 void timer_init(void) {
     ESP_LOGI(TAG, "Initializing timer with frequency %d Hz", CONFIG_CLOCK_FREQ);
-    
+
+    // Capture the handle of the task that calls timer_init() (the Klipper main
+    // task) so the ISR can send it a direct-to-task notification.
+    klipper_task = xTaskGetCurrentTaskHandle();
+
     portENTER_CRITICAL(&timer_spinlock);
     
     gptimer_config_t timer_config = {
@@ -159,38 +171,54 @@ void timer_dispatch() {
  * Interrupt wrappers - ESP32 specific implementations
  ****************************************************************/
 
-// Global IRQ disable using FreeRTOS critical sections
+// Global IRQ spinlock: used by irq_disable/enable/save/restore.
+// irq_wait() temporarily releases this lock so the timer alarm callback
+// (which runs at ISR level) can execute and set must_dispatch.
 static portMUX_TYPE global_irq_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 void irq_disable(void) {
     portENTER_CRITICAL(&global_irq_spinlock);
 }
 
-// Global IRQ enable using FreeRTOS critical sections  
 void irq_enable(void) {
     portEXIT_CRITICAL(&global_irq_spinlock);
 }
 
-// Save current interrupt state
-irqstatus_t irq_save(void) { 
+irqstatus_t irq_save(void) {
     portENTER_CRITICAL(&global_irq_spinlock);
-    return 1; // Indicate IRQs were disabled
+    return 1;
 }
 
-// Restore interrupt state
 void irq_restore(irqstatus_t flag) {
-    if (flag) {
+    if (flag)
         portEXIT_CRITICAL(&global_irq_spinlock);
-    }
 }
 
 void irq_wait(void) {
-    // Yield to allow other tasks to run and check for console activity
-    extern void console_kick(void);
-    console_kick();
-    
-    // Small delay to prevent busy waiting
-    vTaskDelay(pdMS_TO_TICKS(1));
+    // irq_wait() is called from inside run_tasks() while the global_irq_spinlock
+    // is held (between irq_disable()/irq_enable()).  We must release the spinlock
+    // before blocking so that:
+    //  a) the gptimer alarm callback (ISR level) can run and set must_dispatch
+    //  b) FreeRTOS blocking calls work correctly
+    portEXIT_CRITICAL(&global_irq_spinlock);
+
+    // Dispatch any pending timers so their callbacks can call sched_wake_task()
+    // and change tasks_status — otherwise the do-while idle loop in run_tasks()
+    // would spin forever waiting for tasks_status to change while the very timer
+    // that would change it is never dispatched.
+    irq_poll();
+
+    // Feed the hardware watchdog.  sched_main() never returns (run_tasks() is
+    // an infinite loop), so this is the only reliable place to reset it.
+    esp_task_wdt_reset();
+
+    // Sleep until the timer ISR wakes us via task notification, or until the
+    // timeout expires.  Using a notification instead of vTaskDelay() gives
+    // sub-millisecond dispatch latency when an alarm fires.
+    ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(5));
+
+    // Re-acquire the spinlock before returning; run_tasks() expects it held.
+    portENTER_CRITICAL(&global_irq_spinlock);
 }
 
 void irq_poll(void) { 

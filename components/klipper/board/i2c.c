@@ -17,7 +17,7 @@
 #include "soc/clk_tree_defs.h"
 #include "soc/soc_caps.h"
 
-DECL_ENUMERATION_RANGE("i2c_bus", "I2C_NUM_0", 0, 2);
+DECL_ENUMERATION_RANGE("i2c_bus", "I2C_NUM_0", 0, SOC_I2C_NUM);
 DECL_CONSTANT_STR("BUS_PINS_i2c0", "GPIO_NUM_8,GPIO_NUM_9");
 DECL_CONSTANT_STR("BUS_PINS_i2c1", "GPIO_NUM_48,GPIO_NUM_47");
 

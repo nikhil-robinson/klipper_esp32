@@ -121,7 +121,6 @@ struct gpio_pwm gpio_pwm_setup(uint32_t pin, uint32_t cycle_time, uint16_t val) 
     
     // Configure timer hardware only on first use
     if (!pwm_state.timer_hw_configured[timer_num]) {
-        pwm_state.timer_hw_configured[timer_num] = 1;
         ledc_timer_config_t timer_config = {
             .speed_mode = LEDC_LOW_SPEED_MODE,
             .timer_num = timer_num,
@@ -134,6 +133,8 @@ struct gpio_pwm gpio_pwm_setup(uint32_t pin, uint32_t cycle_time, uint16_t val) 
         if (ret != ESP_OK) {
             shutdown("Failed to configure PWM timer");
         }
+        // Only mark as configured after successful hardware init
+        pwm_state.timer_hw_configured[timer_num] = 1;
     }
     
     // Configure channel
