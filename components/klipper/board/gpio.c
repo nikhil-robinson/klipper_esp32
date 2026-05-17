@@ -16,7 +16,6 @@
 #include "sched.h" // sched_shutdown
 #include "soc/gpio_num.h"
 #include "soc/gpio_struct.h"
-#include <string.h> // ffs, memset
 #define TAG "KLIPPER_GPIO"
 
 /****************************************************************
@@ -31,18 +30,12 @@ gpio_dev_t *hw = &GPIO;
  * General Purpose Input Output (GPIO) pins
  ****************************************************************/
 
+static struct gpio_line gpio_lines[GPIO_NUM_MAX];
+
 struct gpio_out gpio_out_setup(uint32_t gpio_num, uint32_t val) {
   
   if (gpio_num >= GPIO_NUM_MAX) {
     shutdown("Invalid GPIO pin");
-  }
-  
-  static struct gpio_line gpio_lines[GPIO_NUM_MAX];
-  static int initialized = 0;
-  
-  if (!initialized) {
-    memset(gpio_lines, 0, sizeof(gpio_lines));
-    initialized = 1;
   }
   
   struct gpio_line *line = &gpio_lines[gpio_num];
@@ -59,15 +52,21 @@ void gpio_out_reset(struct gpio_out g, uint32_t val) {
 }
 
 void gpio_out_toggle_noirq(struct gpio_out g) {
-
-  gpio_out_write(g, !g.line->state);
+  gpio_ll_set_level(hw, g.line->pin, !g.line->state);
+  g.line->state ^= 1;
 }
 
-void gpio_out_toggle(struct gpio_out g) { gpio_out_toggle_noirq(g); }
+void gpio_out_toggle(struct gpio_out g) {
+  irqstatus_t flag = irq_save();
+  gpio_out_toggle_noirq(g);
+  irq_restore(flag);
+}
 
 void gpio_out_write(struct gpio_out g, uint32_t val) {
+  irqstatus_t flag = irq_save();
   gpio_ll_set_level(hw, g.line->pin, val);
   g.line->state = !!val;
+  irq_restore(flag);
 }
 
 struct gpio_in gpio_in_setup(uint8_t pin, int8_t pull_up) {

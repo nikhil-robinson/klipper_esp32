@@ -36,8 +36,6 @@
 #include "board/internal.h"
 #include "sched.h"
 
-static const char* TAG = "console";
-
 // Buffer size constants
 #ifndef CONFIG_CONSOLE_RX_BUFFER_SIZE
 #define CONFIG_CONSOLE_RX_BUFFER_SIZE 256
@@ -46,6 +44,13 @@ static const char* TAG = "console";
 #ifndef CONFIG_UART_TX_BUFFER_SIZE 
 #define CONFIG_UART_TX_BUFFER_SIZE 256
 #endif
+
+// Serial parameters reported to Klipper host.
+// For USB CDC the baud rate is irrelevant but the host still requires the constant.
+DECL_CONSTANT("SERIAL_BAUD", CONFIG_SERIAL_BAUD);
+DECL_CONSTANT("RECEIVE_WINDOW", CONFIG_CONSOLE_RX_BUFFER_SIZE);
+
+static const char* TAG = "console";
 
 // Console state
 static struct task_wake console_wake;
@@ -291,6 +296,17 @@ void console_kick(void)
     }
 }
 
+// Flush and disable console output on emergency shutdown
+void console_shutdown(void)
+{
+    // Flush any pending writes then mark console inactive
+    if (console_active) {
+        fflush(stdout);
+        console_active = 0;
+    }
+}
+DECL_SHUTDOWN(console_shutdown);
+
 // Sleep until console input is available - improved version
 void console_sleep(void)
 {
@@ -307,11 +323,3 @@ void console_sleep(void)
     // This will trigger console_task to wake up if data is available
     sched_wake_task(&console_wake);
 }
-
-// Shutdown console cleanly
-void console_shutdown(void)
-{
-    console_active = 0;
-    ESP_LOGI(TAG, "Console shutdown");
-}
-DECL_SHUTDOWN(console_shutdown);

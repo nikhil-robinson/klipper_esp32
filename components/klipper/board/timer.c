@@ -28,8 +28,6 @@
 static const char* TAG = "timer";
 
 static gptimer_handle_t gptimer = NULL;
-static volatile uint64_t timer_high = 0;
-static volatile uint32_t last_timer_read = 0;
 static portMUX_TYPE timer_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 // Timer state tracking
@@ -39,49 +37,45 @@ static struct {
 } TimerInfo;
 
 // Return the current time (in absolute clock ticks).
+// The hardware counter is 64-bit; we return the lower 32 bits which
+// wrap every ~71 minutes.  timer_is_before() handles the wrap correctly.
 uint32_t timer_read_time(void) {
     uint64_t count;
-    uint32_t current_time;
-    
-    // Use spinlock for atomic access to timer state
-    portENTER_CRITICAL(&timer_spinlock);
-    
-    ESP_ERROR_CHECK(gptimer_get_raw_count(gptimer, &count));
-    
-    // Check for timer wrap-around (ESP32 timer is 64-bit but we use 32-bit interface)
-    if ((uint32_t)count < last_timer_read) {
-        timer_high += 0x100000000ULL;
-    }
-    last_timer_read = (uint32_t)count;
-    
-    // Combine high and low parts for 32-bit result
-    current_time = (uint32_t)((timer_high + count) & 0xFFFFFFFF);
-    
-    portEXIT_CRITICAL(&timer_spinlock);
-    
-    return current_time;
+    gptimer_get_raw_count(gptimer, &count);
+    return (uint32_t)count;
+}
+
+// Map a 32-bit Klipper alarm time to the 64-bit hardware counter value.
+// Picks the earliest future 64-bit time whose low 32 bits equal 'next'.
+static uint64_t alarm_count_for(uint32_t next) {
+    uint64_t hw;
+    gptimer_get_raw_count(gptimer, &hw);
+    uint64_t base = hw & 0xFFFFFFFF00000000ULL;
+    uint64_t candidate = base | (uint64_t)next;
+    // If the candidate is already in the past, advance by one 32-bit period
+    if (candidate <= hw)
+        candidate += 0x100000000ULL;
+    return candidate;
 }
 
 // Set timer for next interrupt
 void timer_set(uint32_t next) {
     portENTER_CRITICAL(&timer_spinlock);
-    
+
     gptimer_alarm_config_t alarm_config = {
-        .alarm_count = next,
+        .alarm_count = alarm_count_for(next),
         .reload_count = 0,
         .flags.auto_reload_on_alarm = false
     };
-    
-    ESP_ERROR_CHECK(gptimer_set_alarm_action(gptimer, &alarm_config));
-    
-    // Only start if not already running
+
+    gptimer_set_alarm_action(gptimer, &alarm_config);
+
     esp_err_t err = gptimer_start(gptimer);
-    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE)
         ESP_ERROR_CHECK(err);
-    }
-    
+
     TimerInfo.next_wake_time = next;
-    
+
     portEXIT_CRITICAL(&timer_spinlock);
 }
 
@@ -132,8 +126,6 @@ void timer_init(void) {
     // Initialize timer state
     TimerInfo.must_dispatch = 0;
     TimerInfo.next_wake_time = 0;
-    timer_high = 0;
-    last_timer_read = 0;
     
     portEXIT_CRITICAL(&timer_spinlock);
     
@@ -204,6 +196,7 @@ void irq_wait(void) {
 void irq_poll(void) { 
     timer_dispatch(); 
 }
+DECL_TASK(irq_poll);
 
 void clear_active_irq(void) {
     portENTER_CRITICAL(&timer_spinlock);

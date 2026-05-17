@@ -19,6 +19,13 @@ DECL_ENUMERATION("spi_bus", "SPI1_HOST", 0);
 DECL_ENUMERATION("spi_bus", "SPI2_HOST", 1);
 DECL_ENUMERATION("spi_bus", "SPI3_HOST", 2);
 
+// Default pin assignments reported to Klipper host (MISO,MOSI,SCK)
+DECL_CONSTANT_STR("BUS_PINS_spi1", "GPIO_NUM_7,GPIO_NUM_8,GPIO_NUM_6");
+DECL_CONSTANT_STR("BUS_PINS_spi2", "GPIO_NUM_13,GPIO_NUM_12,GPIO_NUM_11");
+#if SOC_SPI_PERIPH_NUM > 2
+DECL_CONSTANT_STR("BUS_PINS_spi3", "GPIO_NUM_16,GPIO_NUM_19,GPIO_NUM_18");
+#endif
+
 struct spi_info {
     spi_host_device_t bus;
     uint8_t miso_pin, mosi_pin, sck_pin;
@@ -37,6 +44,9 @@ struct spi_device_info {
 static struct spi_device_info spi_devices[MAX_SPI_DEVICES];
 static int spi_device_count = 0;
 
+// NOTE: SPI1_HOST shares pins with the QSPI flash on most ESP32 variants
+// and should only be used if the flash is on a different interface.
+// SPI2_HOST and SPI3_HOST are the general-purpose buses.
 static struct spi_info spi_bus[] = {
     {SPI1_HOST, 7, 8, 6, false},
     {SPI2_HOST, 13, 12, 11, false},

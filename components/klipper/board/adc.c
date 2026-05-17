@@ -78,12 +78,12 @@ static const adc_mapping_t adc_lookup[] = {
 // #define ADC_TEMPERATURE_PIN 0xfe
 // DECL_ENUMERATION("pin", "ADC_TEMPERATURE", ADC_TEMPERATURE_PIN);
 
-static adc_mapping_t *adc_serach(uint32_t pin)
+static const adc_mapping_t *adc_serach(uint32_t pin)
 {
 
   for (size_t i = 0; i < (sizeof(adc_lookup) / sizeof((adc_lookup)[0])); i++)
   {
-    adc_mapping_t *adc = &adc_lookup[i];
+    const adc_mapping_t *adc = &adc_lookup[i];
     if (adc->pin == pin)
     {
       return adc;

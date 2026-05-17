@@ -29,6 +29,7 @@ static struct {
     uint8_t next_channel; 
     uint32_t timer_frequencies[LEDC_TIMER_MAX];
     uint8_t timer_used[LEDC_TIMER_MAX];
+    uint8_t timer_hw_configured[LEDC_TIMER_MAX]; // hardware ledc_timer_config done
     uint8_t channel_used[LEDC_CHANNEL_MAX];
     uint8_t initialized;
 } pwm_state = {0};
@@ -43,25 +44,25 @@ static void pwm_init(void) {
     pwm_state.initialized = 1;
 }
 
-// Find or allocate a timer for the given frequency
+// Find or allocate a timer for the given frequency.
+// Returns timer index, or -1 if none available.
 static int find_or_allocate_timer(uint32_t freq_hz) {
-    // First check if we already have a timer with this frequency
+    // Reuse an already-configured timer with the same frequency
     for (int i = 0; i < LEDC_TIMER_MAX; i++) {
         if (pwm_state.timer_used[i] && pwm_state.timer_frequencies[i] == freq_hz) {
             return i;
         }
     }
-    
-    // Find first unused timer
+    // Allocate a new timer slot
     for (int i = 0; i < LEDC_TIMER_MAX; i++) {
         if (!pwm_state.timer_used[i]) {
             pwm_state.timer_used[i] = 1;
+            pwm_state.timer_hw_configured[i] = 0; // mark as needing HW init
             pwm_state.timer_frequencies[i] = freq_hz;
             return i;
         }
     }
-    
-    return -1; // No available timers
+    return -1;
 }
 
 // Allocate a channel
@@ -90,8 +91,12 @@ struct gpio_pwm gpio_pwm_setup(uint32_t pin, uint32_t cycle_time, uint16_t val) 
         shutdown("Invalid PWM value");
     }
     
-    // Convert cycle_time to frequency (assuming cycle_time is in Hz)
-    uint32_t freq_hz = cycle_time;
+    // cycle_time is in timer ticks (1MHz clock → 1 tick = 1µs).
+    // Convert to frequency: freq_hz = 1000000 / cycle_time_us
+    if (cycle_time == 0) {
+        shutdown("Invalid PWM cycle_time");
+    }
+    uint32_t freq_hz = 1000000 / cycle_time;
     if (freq_hz == 0 || freq_hz > 40000000) { // ESP32 LEDC max ~40MHz
         shutdown("Invalid PWM frequency");
     }
@@ -114,8 +119,9 @@ struct gpio_pwm gpio_pwm_setup(uint32_t pin, uint32_t cycle_time, uint16_t val) 
     
     irq_restore(flag);
     
-    // Configure timer if it's new
-    if (pwm_state.timer_frequencies[timer_num] == freq_hz) {
+    // Configure timer hardware only on first use
+    if (!pwm_state.timer_hw_configured[timer_num]) {
+        pwm_state.timer_hw_configured[timer_num] = 1;
         ledc_timer_config_t timer_config = {
             .speed_mode = LEDC_LOW_SPEED_MODE,
             .timer_num = timer_num,
@@ -175,3 +181,4 @@ void gpio_pwm_write(struct gpio_pwm g, uint16_t val) {
         shutdown("Failed to update PWM duty");
     }
 }
+

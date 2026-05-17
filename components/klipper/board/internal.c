@@ -16,3 +16,7 @@
 
 void command_reset(uint32_t *args) { esp_restart(); }
 DECL_COMMAND_FLAGS(command_reset, HF_IN_SHUTDOWN, "reset");
+
+// ESP32 has no separate bootloader ROM entry point;
+// restart into normal firmware (OTA bootloader could be added here later).
+void bootloader_request(void) { esp_restart(); }
