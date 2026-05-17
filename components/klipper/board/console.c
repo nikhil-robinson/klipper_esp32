@@ -28,7 +28,6 @@
 #include "driver/usb_serial_jtag.h"
 #endif
 
-#include "esp_vfs_console.h"
 #include "esp_log.h"
 
 #include "board/irq.h"
@@ -161,7 +160,7 @@ static int setup_usb_cdc_console(void)
     }
 
     // Tell VFS to use USB Serial JTAG driver
-    esp_vfs_usb_serial_jtag_use_driver();
+    esp_vfs_dev_usb_serial_jtag_register();
     
     return 0;
 }

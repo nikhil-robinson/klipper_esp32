@@ -101,16 +101,15 @@
 // ========================================================================
 
 // Console type selection based on ESP-IDF configuration
+// Undefine IDF's CONFIG_CONSOLE_UART (which aliases CONFIG_ESP_CONSOLE_UART)
+// so we can redefine it as a simple boolean for Klipper's use.
+#undef CONFIG_CONSOLE_UART
 #ifdef CONFIG_KLIPPER_CONSOLE_UART
 #define CONFIG_CONSOLE_UART 1
-#else
-#define CONFIG_CONSOLE_UART 0
 #endif
 
 #ifdef CONFIG_KLIPPER_CONSOLE_USB_CDC
 #define CONFIG_CONSOLE_USB_CDC 1
-#else
-#define CONFIG_CONSOLE_USB_CDC 0
 #endif
 
 // UART Console Configuration (from ESP-IDF Kconfig)
@@ -137,6 +136,13 @@
 #define CONFIG_UART_RX_BUFFER_SIZE     CONFIG_KLIPPER_UART_RX_BUFFER_SIZE
 #endif
 
+// Serial baud rate for Klipper's generic serial_irq.c
+#ifdef CONFIG_KLIPPER_UART_BAUD_RATE
+#define CONFIG_SERIAL_BAUD CONFIG_KLIPPER_UART_BAUD_RATE
+#else
+#define CONFIG_SERIAL_BAUD 250000
+#endif
+
 // Console buffer configuration
 #define CONFIG_CONSOLE_RX_BUFFER_SIZE  CONFIG_KLIPPER_CONSOLE_RX_BUFFER_SIZE
 
@@ -148,12 +154,12 @@
 #endif
 
 // Validation: Ensure at least one console type is configured
-#if !CONFIG_CONSOLE_UART && !CONFIG_CONSOLE_USB_CDC
+#if !defined(CONFIG_CONSOLE_UART) && !defined(CONFIG_CONSOLE_USB_CDC)
 #error "No console type configured. Enable either UART or USB CDC console in menuconfig."
 #endif
 
 // Validation: USB CDC console requires USB support
-#if CONFIG_CONSOLE_USB_CDC && !CONFIG_USB_CDC_AVAILABLE
+#if defined(CONFIG_CONSOLE_USB_CDC) && !CONFIG_USB_CDC_AVAILABLE
 #error "USB CDC console selected but SOC doesn't support USB. Use UART console instead."
 #endif
 

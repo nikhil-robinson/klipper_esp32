@@ -62,7 +62,7 @@ idf_component_register(
         klipper/src/generic
         .
         board
-    REQUIRES driver esp_adc esp_vfs_console esp_driver_usb_serial_jtag esp_system
+    REQUIRES driver esp_adc vfs esp_system
 )
 
 add_custom_command(
