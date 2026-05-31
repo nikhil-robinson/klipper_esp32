@@ -1,1 +1,5 @@
 CONFIG_FREERTOS_HZ=1000
+
+# Prevent ESP-IDF secondary console from writing text to USB JTAG
+# (conflicts with Klipper's binary protocol on the same endpoint)
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

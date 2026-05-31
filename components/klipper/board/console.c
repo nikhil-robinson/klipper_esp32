@@ -13,11 +13,11 @@
 
 #include "autoconf.h"
 
-#ifdef CONFIG_CONSOLE_UART
+#ifdef CONFIG_KLIPPER_CONSOLE_UART
 #include "driver/uart.h"
 #endif
 
-#ifdef CONFIG_CONSOLE_USB_CDC
+#ifdef CONFIG_KLIPPER_CONSOLE_USB_CDC
 #include "driver/usb_serial_jtag.h"
 #include "hal/usb_serial_jtag_ll.h"
 #endif
@@ -31,11 +31,11 @@
 #include "board/serial_irq.h"
 #include "sched.h"
 
-#ifndef CONFIG_CONSOLE_RX_BUFFER_SIZE
-#define CONFIG_CONSOLE_RX_BUFFER_SIZE 256
+#ifndef CONFIG_KLIPPER_CONSOLE_RX_BUFFER_SIZE
+#define CONFIG_KLIPPER_CONSOLE_RX_BUFFER_SIZE 4096
 #endif
-#ifndef CONFIG_UART_TX_BUFFER_SIZE
-#define CONFIG_UART_TX_BUFFER_SIZE 256
+#ifndef CONFIG_KLIPPER_UART_TX_BUFFER_SIZE
+#define CONFIG_KLIPPER_UART_TX_BUFFER_SIZE 256
 #endif
 
 static const char *TAG = "console";
@@ -54,7 +54,7 @@ int  set_close_on_exec(int fd)         { (void)fd; return 0; }
 
 static int console_read(uint8_t *buf, int maxlen)
 {
-#ifdef CONFIG_CONSOLE_USB_CDC
+#ifdef CONFIG_KLIPPER_CONSOLE_USB_CDC
     // First try ring buffer driver
     int n = (int)usb_serial_jtag_read_bytes(buf, (size_t)maxlen, 0);
     if (n > 0) return n;
@@ -63,8 +63,8 @@ static int console_read(uint8_t *buf, int maxlen)
         return (int)usb_serial_jtag_ll_read_rxfifo(buf, (uint32_t)maxlen);
     }
     return 0;
-#elif defined(CONFIG_CONSOLE_UART)
-    return (int)uart_read_bytes(CONFIG_UART_NUM, buf, (uint32_t)maxlen, 0);
+#elif defined(CONFIG_KLIPPER_CONSOLE_UART)
+    return (int)uart_read_bytes(CONFIG_KLIPPER_UART_NUM, buf, (uint32_t)maxlen, 0);
 #else
     (void)buf; (void)maxlen;
     return 0;
@@ -73,7 +73,7 @@ static int console_read(uint8_t *buf, int maxlen)
 
 static int console_write(const uint8_t *buf, int len)
 {
-#ifdef CONFIG_CONSOLE_USB_CDC
+#ifdef CONFIG_KLIPPER_CONSOLE_USB_CDC
     // Try ring buffer driver first; if it returns 0 bytes, flush directly
     int n = (int)usb_serial_jtag_write_bytes(buf, (size_t)len, pdMS_TO_TICKS(10));
     if (n < len) {
@@ -82,8 +82,8 @@ static int console_write(const uint8_t *buf, int len)
         usb_serial_jtag_ll_txfifo_flush();
     }
     return len;
-#elif defined(CONFIG_CONSOLE_UART)
-    return (int)uart_write_bytes(CONFIG_UART_NUM, buf, (uint32_t)len);
+#elif defined(CONFIG_KLIPPER_CONSOLE_UART)
+    return (int)uart_write_bytes(CONFIG_KLIPPER_UART_NUM, buf, (uint32_t)len);
 #else
     (void)buf; (void)len;
     return 0;
@@ -98,11 +98,11 @@ int console_setup(char *name)
 {
     (void)name;
 
-#ifdef CONFIG_CONSOLE_USB_CDC
+#ifdef CONFIG_KLIPPER_CONSOLE_USB_CDC
     ESP_LOGI(TAG, "Setting up USB CDC console (direct driver)");
     usb_serial_jtag_driver_config_t cfg = {
-        .rx_buffer_size = CONFIG_CONSOLE_RX_BUFFER_SIZE,
-        .tx_buffer_size = CONFIG_UART_TX_BUFFER_SIZE,
+        .rx_buffer_size = CONFIG_KLIPPER_CONSOLE_RX_BUFFER_SIZE,
+        .tx_buffer_size = CONFIG_KLIPPER_UART_TX_BUFFER_SIZE,
     };
     esp_err_t err = usb_serial_jtag_driver_install(&cfg);
     if (err == ESP_ERR_INVALID_STATE) {
@@ -114,29 +114,29 @@ int console_setup(char *name)
         return -1;
     }
 
-#elif defined(CONFIG_CONSOLE_UART)
+#elif defined(CONFIG_KLIPPER_CONSOLE_UART)
     ESP_LOGI(TAG, "Setting up UART console on UART%d baud %d",
-             CONFIG_UART_NUM, CONFIG_UART_BAUD_RATE);
+             CONFIG_KLIPPER_UART_NUM, CONFIG_KLIPPER_UART_BAUD_RATE);
     uart_config_t uart_cfg = {
-        .baud_rate  = CONFIG_UART_BAUD_RATE,
+        .baud_rate  = CONFIG_KLIPPER_UART_BAUD_RATE,
         .data_bits  = UART_DATA_8_BITS,
         .parity     = UART_PARITY_DISABLE,
         .stop_bits  = UART_STOP_BITS_1,
         .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_APB,
     };
-    esp_err_t err = uart_driver_install(CONFIG_UART_NUM,
-                                        CONFIG_CONSOLE_RX_BUFFER_SIZE,
-                                        CONFIG_UART_TX_BUFFER_SIZE,
+    esp_err_t err = uart_driver_install(CONFIG_KLIPPER_UART_NUM,
+                                        CONFIG_KLIPPER_CONSOLE_RX_BUFFER_SIZE,
+                                        CONFIG_KLIPPER_UART_TX_BUFFER_SIZE,
                                         0, NULL, 0);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "uart_driver_install: %s", esp_err_to_name(err));
         return -1;
     }
-    uart_param_config(CONFIG_UART_NUM, &uart_cfg);
-    uart_set_pin(CONFIG_UART_NUM,
-                 CONFIG_UART_TX_PIN, CONFIG_UART_RX_PIN,
-                 CONFIG_UART_RTS_PIN, CONFIG_UART_CTS_PIN);
+    uart_param_config(CONFIG_KLIPPER_UART_NUM, &uart_cfg);
+    uart_set_pin(CONFIG_KLIPPER_UART_NUM,
+                 CONFIG_KLIPPER_UART_TX_PIN, CONFIG_KLIPPER_UART_RX_PIN,
+                 CONFIG_KLIPPER_UART_RTS_PIN, CONFIG_KLIPPER_UART_CTS_PIN);
 
 #else
     ESP_LOGE(TAG, "No console interface configured");
@@ -171,16 +171,8 @@ void console_io_task(void)
     if (!console_active)
         return;
 
-    // Heartbeat: write a "~" (0x7e) every ~1000 task calls to confirm USB TX alive
-    static uint32_t hb_count = 0;
-    if (++hb_count >= 1000) {
-        hb_count = 0;
-        uint8_t hb = 0x7e;
-        console_write(&hb, 1);
-    }
-
     // RX: poll and feed each byte into serial_irq framing
-    uint8_t rxbuf[CONFIG_CONSOLE_RX_BUFFER_SIZE];
+    uint8_t rxbuf[CONFIG_KLIPPER_CONSOLE_RX_BUFFER_SIZE];
     int n = console_read(rxbuf, sizeof(rxbuf));
     for (int i = 0; i < n; i++)
         serial_rx_byte(rxbuf[i]);
@@ -203,7 +195,10 @@ DECL_TASK(console_io_task);
 
 void console_shutdown(void)
 {
-    console_active = 0;
+    // Keep console_active = 1 so that I/O continues during shutdown.
+    // Klipper's host needs serial to remain functional to send recovery
+    // commands (e.g. config_reset).  Only TX draining and RX polling are
+    // performed here; the scheduler already blocks non-shutdown commands.
 }
 DECL_SHUTDOWN(console_shutdown);
 
