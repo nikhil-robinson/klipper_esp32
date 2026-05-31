@@ -1,31 +1,25 @@
-// ESP32 Console Implementation with VFS support - Robust version
-// Supports both UART and USB CDC based on configuration
+// ESP32 Console - direct driver implementation (no VFS/stdin/stdout)
+// Uses usb_serial_jtag_read/write_bytes() or uart_read/write_bytes() directly
+// so that Klipper's binary framing is never mangled by line-ending translation.
 //
-// Based on Linux console.c from Klipper
-// Copyright (C) 2017-2021  Kevin O'Connor <kevin@koconnor.net>
-// ESP32 adaptation: Copyright (C) 2024 Nikhil Robinson <nikhil@techprogeny.com>
+// Copyright (C) 2024  Nikhil Robinson <nikhil@techprogeny.com>
+// Based on Klipper Linux console.c by Kevin O'Connor <kevin@koconnor.net>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include <stdarg.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "autoconf.h"  // CONFIG_* definitions
+#include "autoconf.h"
 
 #ifdef CONFIG_CONSOLE_UART
 #include "driver/uart.h"
-#include "esp_vfs_dev.h"
 #endif
 
 #ifdef CONFIG_CONSOLE_USB_CDC
-#include "esp_vfs_usb_serial_jtag.h"
 #include "driver/usb_serial_jtag.h"
+#include "hal/usb_serial_jtag_ll.h"
 #endif
 
 #include "esp_log.h"
@@ -34,292 +28,187 @@
 #include "board/misc.h"
 #include "command.h"
 #include "board/internal.h"
+#include "board/serial_irq.h"
 #include "sched.h"
 
-// Buffer size constants
 #ifndef CONFIG_CONSOLE_RX_BUFFER_SIZE
 #define CONFIG_CONSOLE_RX_BUFFER_SIZE 256
 #endif
-
-#ifndef CONFIG_UART_TX_BUFFER_SIZE 
+#ifndef CONFIG_UART_TX_BUFFER_SIZE
 #define CONFIG_UART_TX_BUFFER_SIZE 256
 #endif
 
-// Serial parameters reported to Klipper host.
-// For USB CDC the baud rate is irrelevant but the host still requires the constant.
-DECL_CONSTANT("SERIAL_BAUD", CONFIG_SERIAL_BAUD);
-DECL_CONSTANT("RECEIVE_WINDOW", CONFIG_CONSOLE_RX_BUFFER_SIZE);
+static const char *TAG = "console";
 
-static const char* TAG = "console";
-
-// Console state
-static struct task_wake console_wake;
-static uint8_t receive_buf[CONFIG_CONSOLE_RX_BUFFER_SIZE];
-static int receive_pos;
 static volatile uint8_t console_active = 0;
+static volatile uint8_t tx_pending = 0;
+
+// Stubs required by internal.h / Linux-compat layer
+void report_errno(char *where, int rc) { (void)where; (void)rc; }
+int  set_non_blocking(int fd)          { (void)fd; return 0; }
+int  set_close_on_exec(int fd)         { (void)fd; return 0; }
 
 /****************************************************************
- * Utility Functions
+ * Low-level read / write wrappers
  ****************************************************************/
 
-// Report 'errno' in a message written to stderr
-void report_errno(char *where, int rc)
+static int console_read(uint8_t *buf, int maxlen)
 {
-    int e = errno;
-    fprintf(stderr, "Got error %d in %s: (%d) %s\n", rc, where, e, strerror(e));
-}
-
-// Set file descriptor to non-blocking mode
-int set_non_blocking(int fd)
-{
-    int flags = fcntl(fd, F_GETFL);
-    if (flags < 0) {
-        report_errno("fcntl getfl", flags);
-        return -1;
-    }
-    int ret = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-    if (ret < 0) {
-        report_errno("fcntl setfl", ret);
-        return -1;
-    }
-    return 0;
-}
-
-// Set close-on-exec flag (no-op on ESP32, kept for API compatibility)
-int set_close_on_exec(int fd) 
-{ 
-    (void)fd; 
-    return 0; 
-}
-
-/****************************************************************
- * Console Setup
- ****************************************************************/
-
-#ifdef CONFIG_CONSOLE_UART
-static int setup_uart_console(void)
-{
-    ESP_LOGI(TAG, "Setting up UART console on UART%d (TX:%d, RX:%d, baud:%d)", 
-             CONFIG_UART_NUM, CONFIG_UART_TX_PIN, CONFIG_UART_RX_PIN, CONFIG_UART_BAUD_RATE);
-
-    // Configure UART
-    uart_config_t uart_config = {
-        .baud_rate = CONFIG_UART_BAUD_RATE,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
-
-    esp_err_t err;
-    
-    // Install UART driver
-    err = uart_driver_install(CONFIG_UART_NUM, CONFIG_UART_RX_BUFFER_SIZE, 
-                             CONFIG_UART_TX_BUFFER_SIZE, 0, NULL, 0);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to install UART driver: %s", esp_err_to_name(err));
-        return -1;
-    }
-
-    // Configure UART parameters
-    err = uart_param_config(CONFIG_UART_NUM, &uart_config);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure UART: %s", esp_err_to_name(err));
-        return -1;
-    }
-
-    // Set UART pins
-    err = uart_set_pin(CONFIG_UART_NUM, CONFIG_UART_TX_PIN, CONFIG_UART_RX_PIN, 
-                       CONFIG_UART_RTS_PIN, CONFIG_UART_CTS_PIN);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set UART pins: %s", esp_err_to_name(err));
-        return -1;
-    }
-
-    // Install VFS UART driver
-    esp_vfs_dev_uart_use_driver(CONFIG_UART_NUM);
-    
-    return 0;
-}
-#endif
-
 #ifdef CONFIG_CONSOLE_USB_CDC
-static int setup_usb_cdc_console(void)
-{
-    ESP_LOGI(TAG, "Setting up USB CDC console");
-
-    // Configure USB Serial JTAG
-    usb_serial_jtag_driver_config_t usb_serial_jtag_config = {
-        .rx_buffer_size = CONFIG_CONSOLE_RX_BUFFER_SIZE,
-        .tx_buffer_size = CONFIG_UART_TX_BUFFER_SIZE,
-    };
-
-    esp_err_t err;
-    
-    // Install USB Serial JTAG driver
-    err = usb_serial_jtag_driver_install(&usb_serial_jtag_config);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to install USB Serial JTAG driver: %s", esp_err_to_name(err));
-        return -1;
+    // First try ring buffer driver
+    int n = (int)usb_serial_jtag_read_bytes(buf, (size_t)maxlen, 0);
+    if (n > 0) return n;
+    // Fallback: poll hardware FIFO directly (in case ISR-driven driver missed bytes)
+    if (usb_serial_jtag_ll_rxfifo_data_available()) {
+        return (int)usb_serial_jtag_ll_read_rxfifo(buf, (uint32_t)maxlen);
     }
-
-    // Tell VFS to use USB Serial JTAG driver
-    esp_vfs_dev_usb_serial_jtag_register();
-    
     return 0;
-}
+#elif defined(CONFIG_CONSOLE_UART)
+    return (int)uart_read_bytes(CONFIG_UART_NUM, buf, (uint32_t)maxlen, 0);
+#else
+    (void)buf; (void)maxlen;
+    return 0;
 #endif
+}
+
+static int console_write(const uint8_t *buf, int len)
+{
+#ifdef CONFIG_CONSOLE_USB_CDC
+    // Try ring buffer driver first; if it returns 0 bytes, flush directly
+    int n = (int)usb_serial_jtag_write_bytes(buf, (size_t)len, pdMS_TO_TICKS(10));
+    if (n < len) {
+        // Fallback: write directly to TX FIFO
+        usb_serial_jtag_ll_write_txfifo(buf + n, (uint32_t)(len - n));
+        usb_serial_jtag_ll_txfifo_flush();
+    }
+    return len;
+#elif defined(CONFIG_CONSOLE_UART)
+    return (int)uart_write_bytes(CONFIG_UART_NUM, buf, (uint32_t)len);
+#else
+    (void)buf; (void)len;
+    return 0;
+#endif
+}
+
+/****************************************************************
+ * Setup
+ ****************************************************************/
 
 int console_setup(char *name)
 {
-    (void)name; // Not used on ESP32
+    (void)name;
 
-    int ret = -1;
+#ifdef CONFIG_CONSOLE_USB_CDC
+    ESP_LOGI(TAG, "Setting up USB CDC console (direct driver)");
+    usb_serial_jtag_driver_config_t cfg = {
+        .rx_buffer_size = CONFIG_CONSOLE_RX_BUFFER_SIZE,
+        .tx_buffer_size = CONFIG_UART_TX_BUFFER_SIZE,
+    };
+    esp_err_t err = usb_serial_jtag_driver_install(&cfg);
+    if (err == ESP_ERR_INVALID_STATE) {
+        // Driver already installed by ESP-IDF console (CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED)
+        ESP_LOGW(TAG, "USB JTAG driver already installed, reusing it");
+    } else if (err != ESP_OK) {
+        ESP_LOGE(TAG, "usb_serial_jtag_driver_install: %s",
+                 esp_err_to_name(err));
+        return -1;
+    }
 
-#ifdef CONFIG_CONSOLE_UART
-    ret = setup_uart_console();
-#elif defined(CONFIG_CONSOLE_USB_CDC)
-    ret = setup_usb_cdc_console();
+#elif defined(CONFIG_CONSOLE_UART)
+    ESP_LOGI(TAG, "Setting up UART console on UART%d baud %d",
+             CONFIG_UART_NUM, CONFIG_UART_BAUD_RATE);
+    uart_config_t uart_cfg = {
+        .baud_rate  = CONFIG_UART_BAUD_RATE,
+        .data_bits  = UART_DATA_8_BITS,
+        .parity     = UART_PARITY_DISABLE,
+        .stop_bits  = UART_STOP_BITS_1,
+        .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_APB,
+    };
+    esp_err_t err = uart_driver_install(CONFIG_UART_NUM,
+                                        CONFIG_CONSOLE_RX_BUFFER_SIZE,
+                                        CONFIG_UART_TX_BUFFER_SIZE,
+                                        0, NULL, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "uart_driver_install: %s", esp_err_to_name(err));
+        return -1;
+    }
+    uart_param_config(CONFIG_UART_NUM, &uart_cfg);
+    uart_set_pin(CONFIG_UART_NUM,
+                 CONFIG_UART_TX_PIN, CONFIG_UART_RX_PIN,
+                 CONFIG_UART_RTS_PIN, CONFIG_UART_CTS_PIN);
+
 #else
     ESP_LOGE(TAG, "No console interface configured");
     return -1;
 #endif
 
-    if (ret != 0) {
-        return ret;
-    }
-
-    // Set stdin to non-blocking
-    ret = set_non_blocking(STDIN_FILENO);
-    if (ret != 0) {
-        ESP_LOGE(TAG, "Failed to set stdin non-blocking");
-        return ret;
-    }
-
-    // Initialize console state
-    receive_pos = 0;
     console_active = 1;
-
-    ESP_LOGI(TAG, "Console setup complete");
+    tx_pending = 0;
+    ESP_LOGI(TAG, "Console ready");
     return 0;
 }
 
+void
+console_init(void)
+{
+    console_setup("serial");
+}
+DECL_INIT(console_init);
+
 /****************************************************************
- * Console Operation
+ * Console I/O task (board layer)
  ****************************************************************/
 
-// Return pointer to receive buffer
-void *console_receive_buffer(void)
+void serial_enable_tx_irq(void)
 {
-    return receive_buf;
+    tx_pending = 1;
+    sched_wake_tasks();  // ensure console_io_task runs promptly to drain TX
 }
 
-// Process incoming console data - robust implementation
-void console_task(void)
+void console_io_task(void)
 {
-    if (!sched_check_wake(&console_wake) || !console_active)
+    if (!console_active)
         return;
 
-    // Read available data from console
-    int ret = read(STDIN_FILENO, &receive_buf[receive_pos],
-                   sizeof(receive_buf) - receive_pos);
-    
-    if (ret < 0) {
-        if (errno == EWOULDBLOCK || errno == EAGAIN) {
-            return; // No data available
-        }
-        report_errno("console read", ret);
-        return;
-    }
-    
-    if (ret == 0) {
-        return; // No data read
+    // Heartbeat: write a "~" (0x7e) every ~1000 task calls to confirm USB TX alive
+    static uint32_t hb_count = 0;
+    if (++hb_count >= 1000) {
+        hb_count = 0;
+        uint8_t hb = 0x7e;
+        console_write(&hb, 1);
     }
 
-    // Check for force shutdown command
-    if (ret == 15 && receive_pos + ret >= 15 && receive_buf[receive_pos + 14] == '\n' &&
-        memcmp(&receive_buf[receive_pos], "FORCE_SHUTDOWN\n", 15) == 0) {
-        shutdown("Force shutdown command");
-        return;
-    }
+    // RX: poll and feed each byte into serial_irq framing
+    uint8_t rxbuf[CONFIG_CONSOLE_RX_BUFFER_SIZE];
+    int n = console_read(rxbuf, sizeof(rxbuf));
+    for (int i = 0; i < n; i++)
+        serial_rx_byte(rxbuf[i]);
 
-    // Process received data for commands
-    int len = receive_pos + ret;
-    uint_fast8_t pop_count;
-    uint_fast8_t msglen = len > MESSAGE_MAX ? MESSAGE_MAX : len;
-    
-    ret = command_find_and_dispatch(receive_buf, msglen, &pop_count);
-    if (ret) {
-        len -= pop_count;
-        if (len > 0) {
-            memmove(receive_buf, &receive_buf[pop_count], len);
-            sched_wake_task(&console_wake);
-        }
-    }
-    
-    // Bounds check for receive_pos
-    if (len >= sizeof(receive_buf)) {
-        // Buffer overflow protection - keep only the most recent data
-        len = sizeof(receive_buf) - 1;
-        ESP_LOGW(TAG, "Console buffer overflow, truncating");
-    }
-    
-    receive_pos = len;
-}
-DECL_TASK(console_task);
-
-// Encode and transmit a response message - with error handling
-void console_sendf(const struct command_encoder *ce, va_list args)
-{
-    uint8_t buf[MESSAGE_MAX];
-    uint_fast8_t msglen = command_encode_and_frame(buf, ce, args);
-
-    if (msglen == 0 || msglen > MESSAGE_MAX) {
-        ESP_LOGE(TAG, "Invalid message length: %d", msglen);
-        return;
-    }
-
-    int ret = write(STDOUT_FILENO, buf, msglen);
-    if (ret < 0) {
-        report_errno("console write", ret);
-    } else if (ret != msglen) {
-        ESP_LOGW(TAG, "Partial write: expected %d, wrote %d", msglen, ret);
+    // TX: drain bytes queued by serial_irq.c
+    if (tx_pending) {
+        tx_pending = 0;
+        uint8_t txbuf[MESSAGE_MAX];
+        int len = 0;
+        uint8_t b;
+        while (len < (int)sizeof(txbuf) && serial_get_tx_byte(&b) >= 0)
+            txbuf[len++] = b;
+        if (len > 0)
+            console_write(txbuf, len);
+        if (serial_get_tx_byte(&b) >= 0)
+            tx_pending = 1;
     }
 }
+DECL_TASK(console_io_task);
 
-// Console kick function - wake up console processing
-void console_kick(void)
-{
-    if (console_active) {
-        sched_wake_task(&console_wake);
-    }
-}
-
-// Flush and disable console output on emergency shutdown
 void console_shutdown(void)
 {
-    // Flush any pending writes then mark console inactive
-    if (console_active) {
-        fflush(stdout);
-        console_active = 0;
-    }
+    console_active = 0;
 }
 DECL_SHUTDOWN(console_shutdown);
 
-// Sleep until console input is available - improved version
 void console_sleep(void)
 {
-    if (!console_active) {
+    if (!console_active)
         vTaskDelay(pdMS_TO_TICKS(100));
-        return;
-    }
-    
-    // On ESP32 with VFS, we don't need complex polling
-    // Just yield to other tasks and let the console_task handle input
-    vTaskDelay(pdMS_TO_TICKS(10)); // 10ms delay
-    
-    // Check if there might be data available by attempting a non-blocking read
-    // This will trigger console_task to wake up if data is available
-    sched_wake_task(&console_wake);
 }

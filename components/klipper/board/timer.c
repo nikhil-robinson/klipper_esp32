@@ -72,10 +72,6 @@ void timer_set(uint32_t next) {
 
     gptimer_set_alarm_action(gptimer, &alarm_config);
 
-    esp_err_t err = gptimer_start(gptimer);
-    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE)
-        ESP_ERROR_CHECK(err);
-
     TimerInfo.next_wake_time = next;
 
     portEXIT_CRITICAL(&timer_spinlock);
@@ -134,14 +130,17 @@ void timer_init(void) {
     ESP_ERROR_CHECK(gptimer_register_event_callbacks(gptimer, &cbs, NULL));
 
     ESP_ERROR_CHECK(gptimer_enable(gptimer));
-    
+
     // Initialize timer state
     TimerInfo.must_dispatch = 0;
     TimerInfo.next_wake_time = 0;
-    
+
     portEXIT_CRITICAL(&timer_spinlock);
-    
+
+    // Start the counter running once; alarm target is updated via timer_set()
+    // without ever stopping/starting the timer again.
     timer_kick();
+    ESP_ERROR_CHECK(gptimer_start(gptimer));
     
     ESP_LOGI(TAG, "Timer initialized successfully");
 }
